@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.10)
 project(cloudkey_oled_statusd C)
 
 set(CMAKE_C_STANDARD 11)
@@ -42,7 +42,7 @@ endif()
 
 target_link_libraries(ui fb)
 
-add_executable(cloudkey_oled_statusd
+add_executable(oled-statusd
         main.c)
 
 add_library(stats
@@ -57,7 +57,7 @@ add_library(stats
         stats/system.c
         stats/system.h)
 
-target_link_libraries(cloudkey_oled_statusd ui stats)
+target_link_libraries(oled-statusd ui stats)
 
-install(TARGETS cloudkey_oled_statusd DESTINATION bin)
+install(TARGETS oled-statusd DESTINATION bin)
 install(DIRECTORY assets/icons/ DESTINATION share/oled-status/icons)
