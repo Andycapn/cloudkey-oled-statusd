@@ -13,3 +13,4 @@ void render_network_info(struct fb *fb,
     draw_text(fb, 40, 40, ip, WHITE);
 }
 
+

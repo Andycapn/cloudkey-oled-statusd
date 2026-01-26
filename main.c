@@ -1,16 +1,11 @@
 #include <signal.h>
 #include <time.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "fb/fb.h"
-#include "stats/state.h"
-#include "ui/state_icons.h"
-#include "ui/render_state.h"
-
-#include "stats/host.h"
-#include "stats/ip.h"
-#include "ui/render_network.h"
-
+#include "ui/ui_manager.h"
+#include "ui/screens.h"
 
 #define BLACK 0x0000
 
@@ -23,41 +18,56 @@ static void handle_signal(int sig) {
 
 int main(void) {
     struct fb fb;
-    struct state_icons icons;
+    struct ui_manager ui;
 
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
 
-    if (fb_init(&fb) != 0)
+    if (fb_init(&fb) != 0) {
+        fprintf(stderr, "CRITICAL: Failed to initialize framebuffer\n");
         return 1;
+    }
 
-    if (load_state_icons(&icons) != 0)
-        return 1;
+    ui_manager_init(&ui, &fb);
+    ui_manager_set_screen(&ui, status_screen_create());
 
-    struct timespec delay = {
-        .tv_sec = 0,
-        .tv_nsec = 500 * 1000 * 1000  // 500 ms
-    };
+    uint32_t screen_timer = 0;
+    int current_screen_idx = 0;
 
     while (running) {
-        enum system_state state = get_system_state();
+        if (fb_should_close(&fb)) {
+            running = 0;
+            break;
+        }
 
-        char hostname[64] = "UNKNOWN";
-        char ip[32] = "0.0.0.0";
-
-        get_hostname(hostname, sizeof(hostname));
-        get_primary_ipv4(ip, sizeof(ip));
-        
         fb_clear(&fb, BLACK);
-        render_state(&fb, state, &icons);
-        render_network_info(&fb, hostname, ip);
+        
+        ui_manager_update(&ui, 100);
+        ui_manager_render(&ui);
+        
         fb_present(&fb);
 
+        screen_timer += 100;
+        if (screen_timer >= 5000) {
+            screen_timer = 0;
+            current_screen_idx = (current_screen_idx + 1) % 3;
+            if (current_screen_idx == 0) {
+                ui_manager_switch_to(&ui, status_screen_create(), TRANSITION_SLIDE_LEFT, 500);
+            } else if (current_screen_idx == 1) {
+                ui_manager_switch_to(&ui, network_screen_create(), TRANSITION_SLIDE_RIGHT, 500);
+            } else {
+                ui_manager_switch_to(&ui, hello_screen_create(), TRANSITION_FADE, 500);
+            }
+        }
 
+        struct timespec delay = {
+            .tv_sec = 0,
+            .tv_nsec = 100 * 1000 * 1000  // 100 ms
+        };
         nanosleep(&delay, NULL);
     }
 
-    free_state_icons(&icons);
+    ui_manager_cleanup(&ui);
     fb_close(&fb);
     return 0;
 }

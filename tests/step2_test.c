@@ -1,4 +1,4 @@
-#include "fb/fb.h"
+#include "../fb/fb.h"
 #include <stdint.h>
 
 #define BLACK 0x0000

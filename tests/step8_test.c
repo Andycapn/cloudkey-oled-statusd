@@ -1,7 +1,7 @@
-#include "fb/fb.h"
-#include "stats/state.h"
-#include "ui/state_icons.h"
-#include "ui/render_state.h"
+#include "../fb/fb.h"
+#include "../stats/state.h"
+#include "../ui/state_icons.h"
+#include "../ui/render_state.h"
 
 #define BLACK 0x0000
 

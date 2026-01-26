@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "stats/state.h"
+#include "../stats/state.h"
 
 int main(void) {
     enum system_state s = get_system_state();

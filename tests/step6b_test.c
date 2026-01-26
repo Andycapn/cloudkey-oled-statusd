@@ -1,7 +1,7 @@
-#include "fb/fb.h"
-#include "fb/bitmap.h"
-#include "fb/bitmap_loader.h"
-#include "fb/text.h"
+#include "../fb/fb.h"
+#include "../fb/bitmap.h"
+#include "../fb/bitmap_loader.h"
+#include "../fb/text.h"
 
 #define BLACK 0x0000
 #define WHITE 0xFFFF

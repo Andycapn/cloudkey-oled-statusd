@@ -1,8 +1,8 @@
-#include "fb/fb.h"
-#include "fb/draw.h"
-#include "fb/text.h"
-#include "fb/bitmap.h"
-#include "assets/icon_test.h"
+#include "../fb/fb.h"
+#include "../fb/draw.h"
+#include "../fb/text.h"
+#include "../fb/bitmap.h"
+#include "../assets/icon_test.h"
 
 #define BLACK 0x0000
 #define WHITE 0xFFFF

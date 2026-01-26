@@ -1,7 +1,9 @@
 #include "state_icons.h"
 #include "../fb/bitmap_loader.h"
 
+#ifndef ICON_PATH
 #define ICON_PATH "/usr/local/share/oled-status/icons/"
+#endif
 #define ICON_W 16
 #define ICON_H 16
 
