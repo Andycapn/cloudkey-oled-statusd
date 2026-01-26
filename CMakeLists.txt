@@ -34,6 +34,7 @@ add_library(ui
         ui/screens/uptime.c
         ui/screens/libre.c
         ui/screens/internet.c
+        ui/screens/traffic.c
         ui/screens/splash.c
         ui/screens.h)
 

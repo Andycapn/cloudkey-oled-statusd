@@ -139,7 +139,7 @@ sudo cmake --install cmake-build-production
 - Assets: `/usr/local/share/oled-status/icons/*.bin`
 
 ### Configuration (LibreNMS)
-LibreNMS integration is optional. To enable it, you need to create or edit the configuration file.
+LibreNMS integration is optional. To enable it, create or edit the configuration file.
 
 1.  **For Production (Hardware)**:
     Create/Edit `/etc/oled-statusd.conf`:
@@ -147,6 +147,8 @@ LibreNMS integration is optional. To enable it, you need to create or edit the c
     # LibreNMS configuration
     LIBRE_URL=http://your-librenms-ip/api/v0
     LIBRE_TOKEN=your_api_token_here
+    # ID or hostname of the network core device to monitor
+    LIBRE_CORE_DEVICE=1
     ```
 
 2.  **For Development (Simulator)**:
@@ -155,8 +157,17 @@ LibreNMS integration is optional. To enable it, you need to create or edit the c
     # LibreNMS configuration
     LIBRE_URL=http://your-librenms-ip/api/v0
     LIBRE_TOKEN=your_api_token_here
+    LIBRE_CORE_DEVICE=1
     ```
-    *If the token is empty or the file is missing, the LibreNMS screen will show "UNAVAILABLE".*
+    *If the token is empty or the file is missing, the LibreNMS screens will show "UNAVAILABLE".*
+
+### Core Traffic Monitoring
+When `LIBRE_CORE_DEVICE` is configured, the daemon fetches aggregate port statistics for that device.
+
+- **Screen**: "Core Traffic" displays a 60-point history graph.
+- **Metrics**: Aggregates `ifInOctets_rate` and `ifOutOctets_rate` across all ports.
+- **Visualization**: Solid vertical bars represent Incoming traffic; Dots at the peak represent Outgoing traffic.
+- **Unit**: Throughput is displayed in Mbps.
 
 ### Internet Quality Probing
 The daemon periodically probes internet connectivity to provide real-time latency and packet loss metrics.

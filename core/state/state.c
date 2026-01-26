@@ -91,6 +91,46 @@ static void poll_libre(void) {
     g_libre.reachable = true;
     g_libre.devices_down = down;
     g_libre.devices_warning = warn;
+
+    /* Poll traffic for core device if configured */
+    const char *core = libre_core_device();
+    if (core && core[0]) {
+        snprintf(cmd, sizeof(cmd),
+            "curl -sf -H \"X-Auth-Token: %s\" \"%s/devices/%s/ports\"",
+            libre_token(), libre_url(), core);
+        
+        p = popen(cmd, "r");
+        if (p) {
+            uint64_t total_in = 0, total_out = 0;
+            while (fgets(buf, sizeof(buf), p)) {
+                char *in_ptr = strstr(buf, "\"ifInOctets_rate\":");
+                if (in_ptr) {
+                    char *val_start = in_ptr + 18;
+                    while (*val_start == ' ' || *val_start == ':') val_start++;
+                    total_in += strtoull(val_start, NULL, 10);
+                }
+                char *out_ptr = strstr(buf, "\"ifOutOctets_rate\":");
+                if (out_ptr) {
+                    char *val_start = out_ptr + 19;
+                    while (*val_start == ' ' || *val_start == ':') val_start++;
+                    total_out += strtoull(val_start, NULL, 10);
+                }
+            }
+            pclose(p);
+            
+            // Convert Octets rate to bits
+            g_libre.traffic_in = total_in * 8;
+            g_libre.traffic_out = total_out * 8;
+
+            // Shift history
+            for (int i = 0; i < 59; i++) {
+                g_libre.traffic_history_in[i] = g_libre.traffic_history_in[i+1];
+                g_libre.traffic_history_out[i] = g_libre.traffic_history_out[i+1];
+            }
+            g_libre.traffic_history_in[59] = g_libre.traffic_in;
+            g_libre.traffic_history_out[59] = g_libre.traffic_out;
+        }
+    }
 }
 
 static int count_recent_reboots(time_t now) {

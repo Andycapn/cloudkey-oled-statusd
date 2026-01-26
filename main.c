@@ -47,9 +47,9 @@ int main(void) {
 
         fb_clear(&fb, BLACK);
 
-        state_update(100);
-        led_update(100);
-        ui_manager_update(&ui, 100);
+        state_update(10);
+        led_update(10);
+        ui_manager_update(&ui, 10);
         ui_manager_render(&ui);
         
         fb_present(&fb);
@@ -72,7 +72,7 @@ int main(void) {
             led_set_state(LED_OK);
         }
 
-        screen_timer += 100;
+        screen_timer += 10;
         
         // Splash screen duration (e.g., 3 seconds)
         if (current_screen_idx == -1) {
@@ -83,7 +83,7 @@ int main(void) {
             }
         } else if (screen_timer >= 5000) {
             screen_timer = 0;
-            current_screen_idx = (current_screen_idx + 1) % 5;
+            current_screen_idx = (current_screen_idx + 1) % 6;
             if (current_screen_idx == 0) {
                 ui_manager_switch_to(&ui, system_health_screen_create(), TRANSITION_SLIDE_LEFT, 500);
             } else if (current_screen_idx == 1) {
@@ -94,12 +94,14 @@ int main(void) {
                 ui_manager_switch_to(&ui, libre_screen_create(), TRANSITION_SLIDE_LEFT, 500);
             } else if (current_screen_idx == 4) {
                 ui_manager_switch_to(&ui, internet_screen_create(), TRANSITION_SLIDE_LEFT, 500);
+            } else if (current_screen_idx == 5) {
+                ui_manager_switch_to(&ui, traffic_screen_create(), TRANSITION_SLIDE_LEFT, 500);
             }
         }
 
         struct timespec delay = {
             .tv_sec = 0,
-            .tv_nsec = 100 * 1000 * 1000  // 100 ms
+            .tv_nsec = 10 * 1000 * 1000  // 10 ms (100Hz)
         };
         nanosleep(&delay, NULL);
     }

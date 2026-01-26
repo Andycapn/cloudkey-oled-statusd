@@ -34,6 +34,12 @@ struct libre_stats {
     bool reachable;
     int devices_down;
     int devices_warning;
+    
+    /* Traffic for core device (in bits/sec) */
+    uint64_t traffic_in;
+    uint64_t traffic_out;
+    uint64_t traffic_history_in[60];
+    uint64_t traffic_history_out[60];
 };
 
 /* ---------------------------
