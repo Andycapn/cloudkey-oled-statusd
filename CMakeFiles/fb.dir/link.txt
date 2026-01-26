@@ -1,0 +1,2 @@
+/usr/bin/ar qc libfb.a CMakeFiles/fb.dir/fb/bitmap.c.o CMakeFiles/fb.dir/fb/bitmap_loader.c.o CMakeFiles/fb.dir/fb/draw.c.o CMakeFiles/fb.dir/fb/fb.c.o CMakeFiles/fb.dir/fb/text.c.o
+/usr/bin/ranlib libfb.a

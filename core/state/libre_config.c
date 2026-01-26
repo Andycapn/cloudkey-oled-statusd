@@ -6,7 +6,14 @@ static char url[256] = "";
 static char token[128] = "";
 
 void libre_config_load(void) {
+    /* Try local config first (for development/simulator) */
     FILE *f = fopen("config/oled-statusd.conf", "r");
+    
+    /* If not found, try system location (for production) */
+    if (!f) {
+        f = fopen("/etc/oled-statusd.conf", "r");
+    }
+
     if (!f)
         return;
 

@@ -15,6 +15,7 @@ A lightweight daemon to manage the OLED display on UniFi CloudKey hardware (Gen2
   - [Installation](#installation)
   - [Configuration (LibreNMS)](#configuration-librenms)
   - [Internet Quality Probing](#internet-quality-probing)
+  - [LED Status Indicators](#led-status-indicators)
   - [State Persistence (Reboot Tracking)](#state-persistence-reboot-tracking)
   - [System Architecture](#system-architecture)
 
@@ -140,11 +141,16 @@ sudo cmake --install cmake-build-production
 ### Configuration (LibreNMS)
 LibreNMS integration is optional. To enable it, you need to create or edit the configuration file.
 
-1.  **Create the config directory** (if it doesn't exist):
-    ```bash
-    mkdir -p config
+1.  **For Production (Hardware)**:
+    Create/Edit `/etc/oled-statusd.conf`:
+    ```ini
+    # LibreNMS configuration
+    LIBRE_URL=http://your-librenms-ip/api/v0
+    LIBRE_TOKEN=your_api_token_here
     ```
-2.  **Create/Edit `config/oled-statusd.conf`**:
+
+2.  **For Development (Simulator)**:
+    Create/Edit `config/oled-statusd.conf` in the project root:
     ```ini
     # LibreNMS configuration
     LIBRE_URL=http://your-librenms-ip/api/v0
@@ -160,6 +166,17 @@ The daemon periodically probes internet connectivity to provide real-time latenc
 - **Method**: ICMP Ping (`ping -c 5`)
 
 If the target is unreachable, the "Internet Quality" screen will display "OFFLINE" and the "System Health" status will be marked as "DEGRADED".
+
+### LED Status Indicators
+The daemon controls the CloudKey's RGB LED ring to provide at-a-glance system status:
+
+| LED State | Meaning | Condition |
+| :--- | :--- | :--- |
+| **Blue (Slow Blink)** | Booting | Initial splash screen phase |
+| **Blue (Solid)** | Healthy | System OK, Internet OK, LibreNMS clean |
+| **White (Solid)** | Warning | LibreNMS has active device alerts |
+| **Blue/White (Alt)** | Degraded | Internet down or high resource usage |
+| **White (Fast Blink)** | Critical | Hardware/Service failure (e.g., Disk Full) |
 
 ### Systemd Integration
 The binary name `oled-statusd` is chosen for compatibility with standard systemd service unit naming. A separate document will cover the full systemd configuration and hardware setup.

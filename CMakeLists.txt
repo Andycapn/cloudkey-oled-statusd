@@ -37,18 +37,18 @@ add_library(ui
         ui/screens/splash.c
         ui/screens.h)
 
-if(SIMULATOR)
-    target_compile_definitions(fb PUBLIC SIMULATOR)
-    target_compile_definitions(ui PRIVATE ICON_PATH="${CMAKE_SOURCE_DIR}/assets/icons/")
-    target_link_libraries(fb PUBLIC X11)
-endif()
-
-target_link_libraries(ui fb)
-
 add_executable(oled-statusd
         main.c
         core/state/state.c
-        core/state/libre_config.c)
+        core/state/libre_config.c
+        core/led/led_controller.c)
+
+if(SIMULATOR)
+    target_compile_definitions(fb PUBLIC SIMULATOR)
+    target_compile_definitions(oled-statusd PRIVATE SIMULATOR)
+    target_compile_definitions(ui PRIVATE ICON_PATH="${CMAKE_SOURCE_DIR}/assets/icons/")
+    target_link_libraries(fb PUBLIC X11)
+endif()
 
 add_library(stats
         stats/host.c
@@ -62,7 +62,8 @@ add_library(stats
         stats/system.c
         stats/system.h)
 
-target_link_libraries(oled-statusd ui stats)
+target_link_libraries(oled-statusd ui stats fb)
 
 install(TARGETS oled-statusd DESTINATION bin)
 install(DIRECTORY assets/icons/ DESTINATION share/oled-status/icons)
+install(FILES config/oled-statusd.conf DESTINATION /etc)

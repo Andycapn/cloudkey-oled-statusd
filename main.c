@@ -7,6 +7,7 @@
 #include "ui/ui_manager.h"
 #include "ui/screens.h"
 #include "core/state/state.h"
+#include "core/led/led_controller.h"
 
 #define BLACK 0x0000
 
@@ -36,6 +37,7 @@ int main(void) {
     int current_screen_idx = -1; // Start at -1 to indicate splash screen
 
     state_init();
+    led_init(&fb);
 
     while (running) {
         if (fb_should_close(&fb)) {
@@ -46,10 +48,27 @@ int main(void) {
         fb_clear(&fb, BLACK);
 
         state_update(100);
+        led_update(100);
         ui_manager_update(&ui, 100);
         ui_manager_render(&ui);
         
         fb_present(&fb);
+
+        // Update LED based on state
+        const struct system_health *h = state_system();
+        const struct libre_stats *l = state_libre();
+
+        if (current_screen_idx == -1) {
+            led_set_state(LED_BOOT);
+        } else if (h->state == HEALTH_FAILED) {
+            led_set_state(LED_CRITICAL);
+        } else if (h->state == HEALTH_DEGRADED) {
+            led_set_state(LED_DEGRADED);
+        } else if (l->reachable && (l->devices_down > 0)) {
+            led_set_state(LED_WARN);
+        } else {
+            led_set_state(LED_OK);
+        }
 
         screen_timer += 100;
         

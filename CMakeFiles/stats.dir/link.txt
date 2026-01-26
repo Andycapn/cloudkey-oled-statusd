@@ -1,0 +1,2 @@
+/usr/bin/ar qc libstats.a CMakeFiles/stats.dir/stats/host.c.o CMakeFiles/stats.dir/stats/ip.c.o CMakeFiles/stats.dir/stats/network.c.o CMakeFiles/stats.dir/stats/state.c.o CMakeFiles/stats.dir/stats/system.c.o
+/usr/bin/ranlib libstats.a

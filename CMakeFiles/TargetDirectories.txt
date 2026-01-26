@@ -1,0 +1,10 @@
+/home/andrew/Documents/My_Projects/cloudkey-oled-statusd/CMakeFiles/fb.dir
+/home/andrew/Documents/My_Projects/cloudkey-oled-statusd/CMakeFiles/ui.dir
+/home/andrew/Documents/My_Projects/cloudkey-oled-statusd/CMakeFiles/oled-statusd.dir
+/home/andrew/Documents/My_Projects/cloudkey-oled-statusd/CMakeFiles/stats.dir
+/home/andrew/Documents/My_Projects/cloudkey-oled-statusd/CMakeFiles/edit_cache.dir
+/home/andrew/Documents/My_Projects/cloudkey-oled-statusd/CMakeFiles/rebuild_cache.dir
+/home/andrew/Documents/My_Projects/cloudkey-oled-statusd/CMakeFiles/list_install_components.dir
+/home/andrew/Documents/My_Projects/cloudkey-oled-statusd/CMakeFiles/install.dir
+/home/andrew/Documents/My_Projects/cloudkey-oled-statusd/CMakeFiles/install/local.dir
+/home/andrew/Documents/My_Projects/cloudkey-oled-statusd/CMakeFiles/install/strip.dir

@@ -13,6 +13,7 @@ struct fb_backend;
 struct fb {
     uint16_t *buf;
     struct fb_backend *backend;
+    uint32_t led_color; // Simulated LED color (RGB888)
 };
 
 int  fb_init(struct fb *fb);

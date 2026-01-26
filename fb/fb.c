@@ -40,6 +40,17 @@ static void sim_present(struct fb *fb) {
             XPutPixel(priv->image, x * 2 + 1, y * 2 + 1, color);
         }
     }
+
+    // Draw simulated LED in the top-right corner
+    // 6x6 pixel dot (unscaled 3x3)
+    uint32_t led_color = fb->led_color;
+    int led_x = (FB_WIDTH - 5) * 2;
+    int led_y = 5 * 2;
+    for (int dy = 0; dy < 6; dy++) {
+        for (int dx = 0; dx < 6; dx++) {
+            XPutPixel(priv->image, led_x + dx, led_y + dy, led_color);
+        }
+    }
     
     XPutImage(priv->display, priv->window, priv->gc, priv->image, 0, 0, 0, 0, FB_WIDTH * 2, FB_VISIBLE_HEIGHT * 2);
     XFlush(priv->display);
