@@ -10,7 +10,7 @@ static void identity_screen_render(struct screen *s, struct fb *fb) {
 
     const struct identity_info *id = state_identity();
 
-    draw_text(fb, 10, 10, "DEVICE", WHITE);
+    draw_text(fb, 10, 10, "Device", WHITE);
     draw_text(fb, 10, 25, id->hostname, WHITE);
 
     draw_text(fb, 10, 40, "IP:", WHITE);

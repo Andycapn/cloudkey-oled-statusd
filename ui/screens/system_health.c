@@ -25,16 +25,10 @@ static void system_health_render(struct screen *s, struct fb *fb) {
     const struct system_health *h = state_system();
     char buf[32];
 
-    draw_text(fb, 10, 5, "SYSTEM HEALTH", WHITE);
+    draw_text(fb, 10, 5, "System Health", WHITE);
 
-    // Status Icon and Label
-    // struct bitmap *status_icon = &priv->status_ok;
-    // if (h->state == HEALTH_DEGRADED) status_icon = &priv->status_degraded;
-    // else if (h->state == HEALTH_FAILED) status_icon = &priv->status_failed;
-    //
-    // draw_bitmap(fb, 10, 18, status_icon, WHITE);
-    
-    const char *status_str = "OK";
+    // Status
+    const char *status_str = "ok";
     if (h->state == HEALTH_DEGRADED) status_str = "DEGRADED";
     else if (h->state == HEALTH_FAILED) status_str = "FAILED";
     
@@ -45,16 +39,14 @@ static void system_health_render(struct screen *s, struct fb *fb) {
     snprintf(buf, sizeof(buf), "CPU: %d%%", h->cpu_percent);
     draw_text(fb, 10, 38, buf, WHITE);
 
-    snprintf(buf, sizeof(buf), "MEM: %d%%", h->mem_percent);
+    snprintf(buf, sizeof(buf), "Mem: %d%%", h->mem_percent);
     draw_text(fb, 85, 38, buf, WHITE);
 
-    snprintf(buf, sizeof(buf), "DISK: %d%%", h->disk_percent);
+    snprintf(buf, sizeof(buf), "Disk: %d%%", h->disk_percent);
     draw_text(fb, 10, 48, buf, WHITE);
 
-    // // Net Icon
-    // struct bitmap *net_icon = h->internet_reachable ? &priv->net_up : &priv->net_down;
-    // draw_bitmap(fb, 85, 46, net_icon, WHITE);
-    draw_text(fb, 85, 48, h->internet_reachable ? "NET: OK" : "NET: FAIL", WHITE);
+    // Net Icon
+    draw_text(fb, 85, 48, h->internet_reachable ? "Net: OK" : "Net: FAIL", WHITE);
 }
 
 static void system_health_update(struct screen *s, uint32_t dt_ms) {

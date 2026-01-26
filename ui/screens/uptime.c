@@ -24,9 +24,9 @@ static void uptime_screen_render(struct screen *s, struct fb *fb) {
     uint64_t mins = sec / 60;
 
     if (days > 0) {
-        snprintf(buf, sizeof(buf), "%luD %luH", days, hours);
+        snprintf(buf, sizeof(buf), "%lud %luh", days, hours);
     } else {
-        snprintf(buf, sizeof(buf), "%luH %luM", hours, mins);
+        snprintf(buf, sizeof(buf), "%luh %lum", hours, mins);
     }
 
     draw_text(fb, 10, 25, buf, WHITE);

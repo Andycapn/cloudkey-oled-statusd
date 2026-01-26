@@ -12,18 +12,18 @@ static void internet_screen_render(struct screen *s, struct fb *fb) {
     const struct internet_stats *n = state_internet();
     char buf[32];
 
-    draw_text(fb, 10, 10, "INTERNET", WHITE);
+    draw_text(fb, 10, 10, "Internet", WHITE);
 
     if (!n->reachable) {
-        draw_text(fb, 10, 30, "DOWN", WHITE);
+        draw_text(fb, 10, 30, "down", WHITE);
         return;
     }
 
-    snprintf(buf, sizeof(buf), "LAT: %dms",
+    snprintf(buf, sizeof(buf), "latency: %dms",
              n->avg_latency_ms >= 0 ? n->avg_latency_ms : 0);
     draw_text(fb, 10, 28, buf, WHITE);
 
-    snprintf(buf, sizeof(buf), "LOSS: %d%%", n->packet_loss_percent);
+    snprintf(buf, sizeof(buf), "loss: %d%%", n->packet_loss_percent);
     draw_text(fb, 10, 42, buf, WHITE);
 }
 

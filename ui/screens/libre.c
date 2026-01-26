@@ -22,18 +22,18 @@ static void libre_screen_render(struct screen *s, struct fb *fb) {
     const struct libre_stats *l = state_libre();
     char buf[32];
 
-    draw_text(fb, 10, 5, "LIBRENMS SUMMARY", WHITE);
+    draw_text(fb, 10, 5, "LibreNMS Summary", WHITE);
 
     struct bitmap *icon = l->reachable ? &priv->net_up : &priv->net_down;
     draw_bitmap(fb, 10, 20, icon, WHITE);
 
     if (!l->reachable) {
-        draw_text(fb, 32, 24, "UNAVAILABLE", WHITE);
+        draw_text(fb, 32, 24, "unavailable", WHITE);
     } else {
-        snprintf(buf, sizeof(buf), "DOWN: %d", l->devices_down);
+        snprintf(buf, sizeof(buf), "down: %d", l->devices_down);
         draw_text(fb, 32, 20, buf, WHITE);
 
-        snprintf(buf, sizeof(buf), "WARN: %d", l->devices_warning);
+        snprintf(buf, sizeof(buf), "warn: %d", l->devices_warning);
         draw_text(fb, 32, 32, buf, WHITE);
     }
 }
