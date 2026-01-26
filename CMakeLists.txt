@@ -32,6 +32,7 @@ add_library(ui
         ui/screens/status.c
         ui/screens/network.c
         ui/screens/hello.c
+        ui/screens/splash.c
         ui/screens.h)
 
 if(SIMULATOR)

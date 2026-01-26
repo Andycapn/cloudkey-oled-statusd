@@ -29,10 +29,10 @@ int main(void) {
     }
 
     ui_manager_init(&ui, &fb);
-    ui_manager_set_screen(&ui, status_screen_create());
+    ui_manager_set_screen(&ui, splash_screen_create());
 
     uint32_t screen_timer = 0;
-    int current_screen_idx = 0;
+    int current_screen_idx = -1; // Start at -1 to indicate splash screen
 
     while (running) {
         if (fb_should_close(&fb)) {
@@ -48,7 +48,15 @@ int main(void) {
         fb_present(&fb);
 
         screen_timer += 100;
-        if (screen_timer >= 5000) {
+        
+        // Splash screen duration (e.g., 3 seconds)
+        if (current_screen_idx == -1) {
+            if (screen_timer >= 3000) {
+                screen_timer = 0;
+                current_screen_idx = 0;
+                ui_manager_switch_to(&ui, status_screen_create(), TRANSITION_FADE, 500);
+            }
+        } else if (screen_timer >= 5000) {
             screen_timer = 0;
             current_screen_idx = (current_screen_idx + 1) % 3;
             if (current_screen_idx == 0) {
