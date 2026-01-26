@@ -29,9 +29,11 @@ add_library(ui
         ui/state_icons.h
         ui/ui_manager.c
         ui/ui_manager.h
-        ui/screens/status.c
-        ui/screens/network.c
-        ui/screens/hello.c
+        ui/screens/system_health.c
+        ui/screens/identity.c
+        ui/screens/uptime.c
+        ui/screens/libre.c
+        ui/screens/internet.c
         ui/screens/splash.c
         ui/screens.h)
 
@@ -44,7 +46,9 @@ endif()
 target_link_libraries(ui fb)
 
 add_executable(oled-statusd
-        main.c)
+        main.c
+        core/state/state.c
+        core/state/libre_config.c)
 
 add_library(stats
         stats/host.c

@@ -6,6 +6,7 @@
 #include "fb/fb.h"
 #include "ui/ui_manager.h"
 #include "ui/screens.h"
+#include "core/state/state.h"
 
 #define BLACK 0x0000
 
@@ -34,6 +35,8 @@ int main(void) {
     uint32_t screen_timer = 0;
     int current_screen_idx = -1; // Start at -1 to indicate splash screen
 
+    state_init();
+
     while (running) {
         if (fb_should_close(&fb)) {
             running = 0;
@@ -41,7 +44,8 @@ int main(void) {
         }
 
         fb_clear(&fb, BLACK);
-        
+
+        state_update(100);
         ui_manager_update(&ui, 100);
         ui_manager_render(&ui);
         
@@ -54,17 +58,21 @@ int main(void) {
             if (screen_timer >= 3000) {
                 screen_timer = 0;
                 current_screen_idx = 0;
-                ui_manager_switch_to(&ui, status_screen_create(), TRANSITION_FADE, 500);
+                ui_manager_switch_to(&ui, system_health_screen_create(), TRANSITION_FADE, 500);
             }
         } else if (screen_timer >= 5000) {
             screen_timer = 0;
-            current_screen_idx = (current_screen_idx + 1) % 3;
+            current_screen_idx = (current_screen_idx + 1) % 5;
             if (current_screen_idx == 0) {
-                ui_manager_switch_to(&ui, status_screen_create(), TRANSITION_SLIDE_LEFT, 500);
+                ui_manager_switch_to(&ui, system_health_screen_create(), TRANSITION_SLIDE_LEFT, 500);
             } else if (current_screen_idx == 1) {
-                ui_manager_switch_to(&ui, network_screen_create(), TRANSITION_SLIDE_RIGHT, 500);
-            } else {
-                ui_manager_switch_to(&ui, hello_screen_create(), TRANSITION_FADE, 500);
+                ui_manager_switch_to(&ui, identity_screen_create(), TRANSITION_SLIDE_LEFT, 500);
+            } else if (current_screen_idx == 2) {
+                ui_manager_switch_to(&ui, uptime_screen_create(), TRANSITION_SLIDE_LEFT, 500);
+            } else if (current_screen_idx == 3) {
+                ui_manager_switch_to(&ui, libre_screen_create(), TRANSITION_SLIDE_LEFT, 500);
+            } else if (current_screen_idx == 4) {
+                ui_manager_switch_to(&ui, internet_screen_create(), TRANSITION_SLIDE_LEFT, 500);
             }
         }
 

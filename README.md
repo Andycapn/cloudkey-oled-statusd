@@ -13,7 +13,10 @@ A lightweight daemon to manage the OLED display on UniFi CloudKey hardware (Gen2
 - [Production Build & Installation](#production-build--installation)
   - [Building for Hardware](#building-for-hardware)
   - [Installation](#installation)
-- [System Architecture](#system-architecture)
+  - [Configuration (LibreNMS)](#configuration-librenms)
+  - [Internet Quality Probing](#internet-quality-probing)
+  - [State Persistence (Reboot Tracking)](#state-persistence-reboot-tracking)
+  - [System Architecture](#system-architecture)
 
 ---
 
@@ -133,8 +136,48 @@ sudo cmake --install cmake-build-production
 - Binary: `/usr/local/bin/oled-statusd`
 - Assets: `/usr/local/share/oled-status/icons/*.bin`
 
+### Configuration (LibreNMS)
+LibreNMS integration is optional. To enable it, you need to create or edit the configuration file.
+
+1.  **Create the config directory** (if it doesn't exist):
+    ```bash
+    mkdir -p config
+    ```
+2.  **Create/Edit `config/oled-statusd.conf`**:
+    ```ini
+    # LibreNMS configuration
+    LIBRE_URL=http://your-librenms-ip/api/v0
+    LIBRE_TOKEN=your_api_token_here
+    ```
+    *If the token is empty or the file is missing, the LibreNMS screen will show "UNAVAILABLE".*
+
+### Internet Quality Probing
+The daemon periodically probes internet connectivity to provide real-time latency and packet loss metrics.
+
+- **Target**: `8.8.8.8` (Google DNS)
+- **Interval**: Every 5 seconds
+- **Method**: ICMP Ping (`ping -c 5`)
+
+If the target is unreachable, the "Internet Quality" screen will display "OFFLINE" and the "System Health" status will be marked as "DEGRADED".
+
 ### Systemd Integration
 The binary name `oled-statusd` is chosen for compatibility with standard systemd service unit naming. A separate document will cover the full systemd configuration and hardware setup.
+
+### State Persistence (Reboot Tracking)
+The daemon tracks system reboots over a 24-hour window. This requires a persistent directory to store boot timestamps.
+
+1.  **Create the persistence directory**:
+    ```bash
+    sudo mkdir -p /var/lib/oled-statusd
+    sudo chown root:root /var/lib/oled-statusd
+    sudo chmod 755 /var/lib/oled-statusd
+    ```
+    *Note: If running as a non-root user (e.g., during testing), ensure the user has write access to this directory.*
+
+2.  **How it works**:
+    - On startup, the daemon appends the current system time to `/var/lib/oled-statusd/reboots`.
+    - It periodically prunes and counts entries from the last 24 hours to display on the "Uptime & Stability" screen.
+    - Restarting the service does **not** increment the count (only system boots do).
 
 ---
 
