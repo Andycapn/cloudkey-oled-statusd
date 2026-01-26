@@ -65,6 +65,8 @@ int main(void) {
         } else if (h->state == HEALTH_DEGRADED) {
             led_set_state(LED_DEGRADED);
         } else if (l->reachable && (l->devices_down > 0)) {
+            led_set_state(LED_CRITICAL);
+        } else if (l->reachable && (l->devices_warning > 0)) {
             led_set_state(LED_WARN);
         } else {
             led_set_state(LED_OK);

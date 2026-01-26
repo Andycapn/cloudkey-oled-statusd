@@ -74,11 +74,11 @@ static void poll_libre(void) {
     int ok = 0;
 
     while (fgets(buf, sizeof(buf), p)) {
-        if (strstr(buf, "\"status\":\"down\""))
+        if (strstr(buf, "\"status\":\"down\"") || strstr(buf, "\"status\":false"))
             down++;
         else if (strstr(buf, "\"status\":\"warning\""))
             warn++;
-        else if (strstr(buf, "\"status\":\"up\""))
+        else if (strstr(buf, "\"status\":\"up\"") || strstr(buf, "\"status\":true"))
             ok++;
     }
 
