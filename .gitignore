@@ -1,0 +1,6 @@
+/cmake-build-*/
+/build/
+/config/oled-statusd.conf
+*.o
+*.a
+oled-statusd

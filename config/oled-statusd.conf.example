@@ -1,0 +1,4 @@
+# LibreNMS configuration
+LIBRE_URL=
+LIBRE_TOKEN=
+LIBRE_CORE_DEVICE=
