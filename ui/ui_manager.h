@@ -34,7 +34,8 @@ struct ui_manager {
     uint32_t transition_elapsed_ms;
     
     struct fb *fb;
-    uint16_t *transition_buf; // Temporary buffer for transitions
+    uint16_t *scratch_buf1; // Preallocated scratch buffers used to render
+    uint16_t *scratch_buf2; // the outgoing/incoming screens during a transition
 };
 
 void ui_manager_init(struct ui_manager *mgr, struct fb *fb);

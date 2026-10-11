@@ -5,7 +5,8 @@
 void ui_manager_init(struct ui_manager *mgr, struct fb *fb) {
     memset(mgr, 0, sizeof(struct ui_manager));
     mgr->fb = fb;
-    mgr->transition_buf = calloc(FB_WIDTH * FB_HEIGHT, sizeof(uint16_t));
+    mgr->scratch_buf1 = calloc(FB_WIDTH * FB_PHYS_HEIGHT, sizeof(uint16_t));
+    mgr->scratch_buf2 = calloc(FB_WIDTH * FB_PHYS_HEIGHT, sizeof(uint16_t));
 }
 
 void ui_manager_cleanup(struct ui_manager *mgr) {
@@ -15,7 +16,8 @@ void ui_manager_cleanup(struct ui_manager *mgr) {
     if (mgr->next_screen && mgr->next_screen->destroy) {
         mgr->next_screen->destroy(mgr->next_screen);
     }
-    free(mgr->transition_buf);
+    free(mgr->scratch_buf1);
+    free(mgr->scratch_buf2);
 }
 
 void ui_manager_set_screen(struct ui_manager *mgr, struct screen *s) {
@@ -123,21 +125,19 @@ void ui_manager_render(struct ui_manager *mgr) {
             mgr->current_screen->render(mgr->current_screen, mgr->fb);
         }
     } else {
-        // We need to render both screens to separate buffers and then mix
-        // Since fb->buf is the current output, we can use transition_buf as temporary
-        
-        uint16_t *screen1_buf = malloc(FB_WIDTH * FB_PHYS_HEIGHT * sizeof(uint16_t));
-        uint16_t *screen2_buf = malloc(FB_WIDTH * FB_PHYS_HEIGHT * sizeof(uint16_t));
-        
+        // Render both screens into the preallocated scratch buffers and mix
+        uint16_t *screen1_buf = mgr->scratch_buf1;
+        uint16_t *screen2_buf = mgr->scratch_buf2;
+
         struct fb tmp_fb1 = { .buf = screen1_buf, .backend = NULL };
         struct fb tmp_fb2 = { .buf = screen2_buf, .backend = NULL };
-        
+
         fb_clear(&tmp_fb1, 0);
         mgr->current_screen->render(mgr->current_screen, &tmp_fb1);
-        
+
         fb_clear(&tmp_fb2, 0);
         mgr->next_screen->render(mgr->next_screen, &tmp_fb2);
-        
+
         float ratio = (float)mgr->transition_elapsed_ms / mgr->transition_duration_ms;
         if (ratio > 1.0f) ratio = 1.0f;
 
@@ -148,8 +148,5 @@ void ui_manager_render(struct ui_manager *mgr) {
         } else if (mgr->transition == TRANSITION_SLIDE_RIGHT) {
             mix_buffers_slide(mgr->fb->buf, screen1_buf, screen2_buf, ratio, false);
         }
-        
-        free(screen1_buf);
-        free(screen2_buf);
     }
 }

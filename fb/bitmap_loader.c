@@ -15,8 +15,8 @@ int load_bitmap(const char *path, int w, int h, struct bitmap *out) {
 
     if ((size_t)st.st_size != expected_size) {
         fprintf(stderr,
-            "bitmap size mismatch: %s (got %ld, expected %zu)\n",
-            path, st.st_size, expected_size);
+            "bitmap size mismatch: %s (got %lld, expected %zu)\n",
+            path, (long long)st.st_size, expected_size);
         return -1;
     }
 

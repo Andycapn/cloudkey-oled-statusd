@@ -22,11 +22,11 @@ A lightweight daemon to manage the OLED display on UniFi CloudKey hardware (Gen2
 ---
 
 ## Features
-- **JetBrains Mono Font**: High-quality bitmap font with full ASCII support (including lowercase).
+- **Monochrome 5x7 Pixel Font**: Compact bitmap font tuned for the 160x60 OLED panel.
 - **Modular UI**: React-like screen components with lifecycle hooks.
 - **Smooth Animations**: Support for Slide and Fade transitions.
 - **Local Simulator**: Develop and test UI on your Linux desktop via X11.
-- **Hardware Optimized**: Targets `/dev/fb0` on the target device.
+- **Hardware Optimized**: Targets `/dev/fb0` on the target device and favors black/white-only rendering.
 
 ---
 

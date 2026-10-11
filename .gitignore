@@ -4,3 +4,20 @@
 *.o
 *.a
 oled-statusd
+
+# In-tree CMake build output (project should be configured into
+# cmake-build-*/ or build/, not the repo root)
+/CMakeCache.txt
+/CMakeFiles/
+/cmake_install.cmake
+/Makefile
+
+# Compiled test binaries (keep the .c sources)
+tests/fb_step1
+tests/step2_test
+tests/step3_test
+tests/step4_test
+tests/step5_test
+tests/step6b_test
+tests/step7_test
+tests/step8_test

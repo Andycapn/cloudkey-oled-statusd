@@ -5,7 +5,10 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include "../../stats/host.h"
 #include "../../stats/ip.h"
@@ -21,20 +24,23 @@ static struct libre_stats   g_libre;
 static struct internet_stats g_internet;
 static struct identity_info g_identity;
 
-static uint32_t identity_timer = 0;
-#define IDENTITY_UPDATE_MS 5000
+#define IDENTITY_UPDATE_MS 5000u
+#define UPTIME_UPDATE_MS 1000u
+#define HEALTH_UPDATE_MS 2000u
+#define LIBRE_UPDATE_MS 15000u
+#define INTERNET_UPDATE_MS 5000u
+#define REBOOT_CHECK_INTERVAL_MS 60000u
 
-static uint32_t uptime_timer = 0;
-#define UPTIME_UPDATE_MS 1000
+struct state_scheduler {
+    uint32_t identity_ms;
+    uint32_t uptime_ms;
+    uint32_t health_ms;
+    uint32_t libre_ms;
+    uint32_t internet_ms;
+    uint32_t reboot_ms;
+};
 
-static uint32_t health_timer = 0;
-#define HEALTH_UPDATE_MS 2000
-
-static uint32_t libre_timer = 0;
-#define LIBRE_UPDATE_MS 15000
-
-static uint32_t internet_timer = 0;
-#define INTERNET_UPDATE_MS 5000
+static struct state_scheduler g_sched;
 
 #define REBOOT_FILE "/var/lib/oled-statusd/reboots"
 #define SECONDS_24H (24 * 60 * 60)
@@ -52,18 +58,75 @@ static void record_reboot(time_t now) {
     fclose(f);
 }
 
+/* Runs argv[0] with the given arguments directly via execvp (no shell),
+ * so values like the LibreNMS token/URL/device id can never be interpreted
+ * as shell syntax. Returns a FILE* for reading the child's stdout. */
+static FILE *exec_argv(char *const argv[], pid_t *out_pid) {
+    int pipefd[2];
+    if (pipe(pipefd) != 0)
+        return NULL;
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return NULL;
+    }
+
+    if (pid == 0) {
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+        int devnull = open("/dev/null", O_WRONLY);
+        if (devnull >= 0) {
+            dup2(devnull, STDERR_FILENO);
+            close(devnull);
+        }
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+
+    close(pipefd[1]);
+    FILE *f = fdopen(pipefd[0], "r");
+    if (!f) {
+        close(pipefd[0]);
+        int status;
+        waitpid(pid, &status, 0);
+        return NULL;
+    }
+
+    *out_pid = pid;
+    return f;
+}
+
+static int exec_close(FILE *f, pid_t pid) {
+    fclose(f);
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
+
 static void poll_libre(void) {
     if (!libre_url()[0] || !libre_token()[0]) {
         g_libre.reachable = false;
         return;
     }
 
-    char cmd[512];
-    snprintf(cmd, sizeof(cmd),
-        "curl -sf -H \"X-Auth-Token: %s\" \"%s/devices\"",
-        libre_token(), libre_url());
+    char auth_header[160];
+    snprintf(auth_header, sizeof(auth_header), "X-Auth-Token: %s", libre_token());
 
-    FILE *p = popen(cmd, "r");
+    char devices_url[300];
+    snprintf(devices_url, sizeof(devices_url), "%s/devices", libre_url());
+
+    char *argv[] = {
+        "curl", "-sf", "--max-time", "5",
+        "-H", auth_header,
+        devices_url,
+        NULL
+    };
+
+    pid_t pid;
+    FILE *p = exec_argv(argv, &pid);
     if (!p) {
         g_libre.reachable = false;
         return;
@@ -82,7 +145,7 @@ static void poll_libre(void) {
             ok++;
     }
 
-    int rc = pclose(p);
+    int rc = exec_close(p, pid);
     if (rc != 0) {
         g_libre.reachable = false;
         return;
@@ -95,11 +158,18 @@ static void poll_libre(void) {
     /* Poll traffic for core device if configured */
     const char *core = libre_core_device();
     if (core && core[0]) {
-        snprintf(cmd, sizeof(cmd),
-            "curl -sf -H \"X-Auth-Token: %s\" \"%s/devices/%s/ports\"",
-            libre_token(), libre_url(), core);
-        
-        p = popen(cmd, "r");
+        char ports_url[350];
+        snprintf(ports_url, sizeof(ports_url), "%s/devices/%s/ports", libre_url(), core);
+
+        char *argv2[] = {
+            "curl", "-sf", "--max-time", "5",
+            "-H", auth_header,
+            ports_url,
+            NULL
+        };
+
+        pid_t pid2;
+        p = exec_argv(argv2, &pid2);
         if (p) {
             uint64_t total_in = 0, total_out = 0;
             while (fgets(buf, sizeof(buf), p)) {
@@ -116,8 +186,8 @@ static void poll_libre(void) {
                     total_out += strtoull(val_start, NULL, 10);
                 }
             }
-            pclose(p);
-            
+            exec_close(p, pid2);
+
             // Convert Octets rate to bits
             g_libre.traffic_in = total_in * 8;
             g_libre.traffic_out = total_out * 8;
@@ -158,7 +228,7 @@ static int read_cpu_percent(void) {
         return -1;
 
     uint64_t user, nice, system, idle, iowait, irq, softirq;
-    fscanf(f, "cpu %lu %lu %lu %lu %lu %lu %lu",
+    fscanf(f, "cpu %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64,
            &user, &nice, &system, &idle, &iowait, &irq, &softirq);
     fclose(f);
 
@@ -186,7 +256,7 @@ static int read_mem_percent(void) {
     char key[32];
     uint64_t value;
 
-    while (fscanf(f, "%31s %lu kB", key, &value) == 2) {
+    while (fscanf(f, "%31s %" SCNu64 " kB", key, &value) == 2) {
         if (strcmp(key, "MemTotal:") == 0)
             total = value;
         else if (strcmp(key, "MemAvailable:") == 0)
@@ -227,6 +297,7 @@ void state_init(void) {
     memset(&g_libre, 0, sizeof(g_libre));
     memset(&g_internet, 0, sizeof(g_internet));
     memset(&g_identity, 0, sizeof(g_identity));
+    memset(&g_sched, 0, sizeof(g_sched));
 
     /* Sensible defaults */
     g_system.state = HEALTH_DEGRADED;
@@ -286,49 +357,58 @@ static void poll_internet_quality(void) {
  * Update Dispatcher
  * --------------------------- */
 void state_update(uint32_t dt_ms) {
-    identity_timer += dt_ms;
-    if (identity_timer >= IDENTITY_UPDATE_MS) {
-        identity_timer = 0;
+    if (dt_ms == 0) {
+        return;
+    }
 
-        /* Hostname */
+    g_sched.identity_ms += dt_ms;
+    while (g_sched.identity_ms >= IDENTITY_UPDATE_MS) {
+        g_sched.identity_ms -= IDENTITY_UPDATE_MS;
+
         if (gethostname(g_identity.hostname, sizeof(g_identity.hostname)) != 0) {
             strncpy(g_identity.hostname, "UNKNOWN", sizeof(g_identity.hostname));
         }
         g_identity.hostname[sizeof(g_identity.hostname) - 1] = '\0';
 
-        /* Primary IP */
         if (get_primary_ipv4(g_identity.ip, sizeof(g_identity.ip)) != 0) {
             strncpy(g_identity.ip, "0.0.0.0", sizeof(g_identity.ip));
         }
         g_identity.ip[sizeof(g_identity.ip) - 1] = '\0';
 
-        /* Interface name (optional but useful) */
         strncpy(g_identity.iface, "eth0", sizeof(g_identity.iface));
         g_identity.iface[sizeof(g_identity.iface) - 1] = '\0';
     }
 
-    uptime_timer += dt_ms;
-    if (uptime_timer >= UPTIME_UPDATE_MS) {
-        uptime_timer = 0;
+    g_sched.uptime_ms += dt_ms;
+    while (g_sched.uptime_ms >= UPTIME_UPDATE_MS) {
+        g_sched.uptime_ms -= UPTIME_UPDATE_MS;
 
         struct timespec ts;
+#if defined(CLOCK_BOOTTIME)
         if (clock_gettime(CLOCK_BOOTTIME, &ts) == 0) {
             g_uptime.uptime_seconds = ts.tv_sec;
         }
-
-        /* Recalculate reboot count occasionally */
-        static uint32_t reboot_timer = 0;
-        reboot_timer += UPTIME_UPDATE_MS;
-        if (reboot_timer >= 60000) {  // every 60s
-            reboot_timer = 0;
-            time_t now = time(NULL);
-            g_uptime.reboot_count_24h = count_recent_reboots(now);
+#elif defined(CLOCK_MONOTONIC)
+        if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+            g_uptime.uptime_seconds = ts.tv_sec;
         }
+#else
+        if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
+            g_uptime.uptime_seconds = ts.tv_sec;
+        }
+#endif
     }
 
-    health_timer += dt_ms;
-    if (health_timer >= HEALTH_UPDATE_MS) {
-        health_timer = 0;
+    g_sched.reboot_ms += dt_ms;
+    while (g_sched.reboot_ms >= REBOOT_CHECK_INTERVAL_MS) {
+        g_sched.reboot_ms -= REBOOT_CHECK_INTERVAL_MS;
+        time_t now = time(NULL);
+        g_uptime.reboot_count_24h = count_recent_reboots(now);
+    }
+
+    g_sched.health_ms += dt_ms;
+    while (g_sched.health_ms >= HEALTH_UPDATE_MS) {
+        g_sched.health_ms -= HEALTH_UPDATE_MS;
 
         int cpu = read_cpu_percent();
         int mem = read_mem_percent();
@@ -340,7 +420,6 @@ void state_update(uint32_t dt_ms) {
         g_system.disk_percent = disk;
         g_system.internet_reachable = net;
 
-        /* Determine health state */
         if (cpu < 0 || mem < 0 || disk < 0) {
             g_system.state = HEALTH_FAILED;
         } else if (cpu > 80 || mem > 80 || disk > 90 || !net) {
@@ -350,18 +429,15 @@ void state_update(uint32_t dt_ms) {
         }
     }
 
-    libre_timer += dt_ms;
-    if (libre_timer >= LIBRE_UPDATE_MS) {
-        libre_timer = 0;
+    g_sched.libre_ms += dt_ms;
+    while (g_sched.libre_ms >= LIBRE_UPDATE_MS) {
+        g_sched.libre_ms -= LIBRE_UPDATE_MS;
         poll_libre();
     }
 
-    /* ---------------------------
-     * Internet Quality Poller
-     * --------------------------- */
-    internet_timer += dt_ms;
-    if (internet_timer >= INTERNET_UPDATE_MS) {
-        internet_timer = 0;
+    g_sched.internet_ms += dt_ms;
+    while (g_sched.internet_ms >= INTERNET_UPDATE_MS) {
+        g_sched.internet_ms -= INTERNET_UPDATE_MS;
         poll_internet_quality();
     }
 }

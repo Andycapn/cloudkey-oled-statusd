@@ -4,7 +4,6 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <sys/socket.h>
-#include <linux/rtnetlink.h>
 #include <unistd.h>
 
 int get_primary_ipv4(char *buf, int buflen) {

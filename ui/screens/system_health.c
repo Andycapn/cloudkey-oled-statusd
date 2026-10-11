@@ -1,12 +1,15 @@
 #include "../ui_manager.h"
 #include "../../fb/text.h"
+#include "../../fb/draw.h"
 #include "../../fb/bitmap.h"
 #include "../../fb/bitmap_loader.h"
 #include "../../core/state/state.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #define WHITE 0xFFFF
+#define BLACK 0x0000
 
 #ifndef ICON_PATH
 #define ICON_PATH "/usr/local/share/oled-status/icons/"
@@ -20,33 +23,61 @@ struct health_priv {
     struct bitmap net_down;
 };
 
+static void draw_status_badge(struct fb *fb, int x, int y, const char *label) {
+    draw_rect(fb, x, y, 28, 8, WHITE);
+    draw_text(fb, x + 4, y + 1, label, BLACK);
+}
+
+static void draw_status_ring(struct fb *fb, int cx, int cy, int radius, uint16_t color) {
+    for (double angle = 0.0; angle < 2.0 * M_PI; angle += 0.12) {
+        int x = (int)(cx + cos(angle) * radius);
+        int y = (int)(cy + sin(angle) * radius);
+        draw_pixel(fb, x, y, color);
+    }
+}
+
 static void system_health_render(struct screen *s, struct fb *fb) {
     struct health_priv *priv = s->priv;
     const struct system_health *h = state_system();
-    char buf[32];
+    char buf[24];
 
-    draw_text(fb, 10, 5, "System Health", WHITE);
+    draw_rect(fb, 0, 0, FB_WIDTH, FB_VISIBLE_HEIGHT, BLACK);
+    draw_rect(fb, 0, 0, FB_WIDTH, 10, WHITE);
+    draw_text(fb, 4, 2, "SYS", BLACK);
 
-    // Status
-    const char *status_str = "ok";
-    if (h->state == HEALTH_DEGRADED) status_str = "DEGRADED";
-    else if (h->state == HEALTH_FAILED) status_str = "FAILED";
-    
-    snprintf(buf, sizeof(buf), "STATUS: %s", status_str);
-    draw_text(fb, 10, 22, buf, WHITE);
+    if (h->state == HEALTH_OK) {
+        draw_status_badge(fb, 118, 1, "OK");
+    } else if (h->state == HEALTH_DEGRADED) {
+        draw_status_badge(fb, 110, 1, "WARN");
+    } else {
+        draw_status_badge(fb, 113, 1, "FAIL");
+    }
 
-    // Stats
-    snprintf(buf, sizeof(buf), "CPU: %d%%", h->cpu_percent);
-    draw_text(fb, 10, 38, buf, WHITE);
+    draw_status_ring(fb, 130, 25, 10, WHITE);
+    draw_rect(fb, 124, 19, 12, 12, BLACK);
 
-    snprintf(buf, sizeof(buf), "Mem: %d%%", h->mem_percent);
-    draw_text(fb, 85, 38, buf, WHITE);
+    draw_text(fb, 8, 18, "400", WHITE);
+    draw_text(fb, 42, 18, "Mbps", WHITE);
 
-    snprintf(buf, sizeof(buf), "Disk: %d%%", h->disk_percent);
-    draw_text(fb, 10, 48, buf, WHITE);
+    snprintf(buf, sizeof(buf), "CPU %d%%", h->cpu_percent);
+    draw_rect(fb, 6, 32, 46, 8, WHITE);
+    draw_text(fb, 10, 33, buf, BLACK);
 
-    // Net Icon
-    draw_text(fb, 85, 48, h->internet_reachable ? "Net: OK" : "Net: FAIL", WHITE);
+    snprintf(buf, sizeof(buf), "MEM %d%%", h->mem_percent);
+    draw_rect(fb, 6, 42, 48, 8, WHITE);
+    draw_text(fb, 10, 43, buf, BLACK);
+
+    snprintf(buf, sizeof(buf), "DISK %d%%", h->disk_percent);
+    draw_rect(fb, 6, 52, 54, 8, WHITE);
+    draw_text(fb, 10, 53, buf, BLACK);
+
+    if (h->internet_reachable) {
+        draw_text(fb, 100, 34, "NET OK", WHITE);
+    } else {
+        draw_text(fb, 96, 34, "NET OFF", WHITE);
+    }
+
+    (void)priv;
 }
 
 static void system_health_update(struct screen *s, uint32_t dt_ms) {

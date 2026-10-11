@@ -1,30 +1,38 @@
 #include "../ui_manager.h"
 #include "../../fb/text.h"
+#include "../../fb/draw.h"
 #include "../../core/state/state.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 #define WHITE 0xFFFF
+#define BLACK 0x0000
 
 static void internet_screen_render(struct screen *s, struct fb *fb) {
     (void)s;
 
     const struct internet_stats *n = state_internet();
-    char buf[32];
+    char buf[28];
 
-    draw_text(fb, 10, 10, "Internet", WHITE);
+    draw_rect(fb, 0, 0, 160, 58, BLACK);
+    draw_rect(fb, 0, 0, 160, 10, WHITE);
+    draw_text(fb, 4, 2, "NET", BLACK);
 
-    if (!n->reachable) {
-        draw_text(fb, 10, 30, "down", WHITE);
-        return;
+    if (n->reachable) {
+        draw_rect(fb, 92, 1, 48, 8, WHITE);
+        draw_text(fb, 100, 2, "UP", BLACK);
+        snprintf(buf, sizeof(buf), "LAT %dMS", n->avg_latency_ms);
+        draw_text(fb, 6, 18, buf, WHITE);
+        snprintf(buf, sizeof(buf), "LOSS %d%%", n->packet_loss_percent);
+        draw_text(fb, 6, 30, buf, WHITE);
+        draw_text(fb, 6, 42, "QUALITY OK", WHITE);
+    } else {
+        draw_rect(fb, 86, 1, 60, 8, WHITE);
+        draw_text(fb, 92, 2, "DOWN", BLACK);
+        draw_text(fb, 6, 20, "LINK LOST", WHITE);
+        draw_text(fb, 6, 34, "PING FAIL", WHITE);
+        draw_text(fb, 6, 48, "RETRYING", WHITE);
     }
-
-    snprintf(buf, sizeof(buf), "latency: %dms",
-             n->avg_latency_ms >= 0 ? n->avg_latency_ms : 0);
-    draw_text(fb, 10, 28, buf, WHITE);
-
-    snprintf(buf, sizeof(buf), "loss: %d%%", n->packet_loss_percent);
-    draw_text(fb, 10, 42, buf, WHITE);
 }
 
 static void internet_screen_update(struct screen *s, uint32_t dt_ms) {
