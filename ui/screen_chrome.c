@@ -1,7 +1,6 @@
 #include "screen_chrome.h"
 #include "../fb/draw.h"
 #include "../fb/text.h"
-#include <math.h>
 
 #define BLACK 0x0000
 #define WHITE 0xFFFF
@@ -35,10 +34,13 @@ static void draw_icon(struct fb *fb, int x, int y, enum screen_icon icon, uint16
 }
 
 static void draw_action_glyph(struct fb *fb) {
-    for (double angle = 0.0; angle < 2.0 * M_PI; angle += 0.2) {
-        int x = (int)(151 + cos(angle) * 4);
-        int y = (int)(6 + sin(angle) * 4);
-        draw_pixel(fb, x, y, WHITE);
+    static const int8_t ring_points[][2] = {
+        { -4, -1 }, { -3, -3 }, { -1, -4 }, { 1, -4 },
+        { 3, -3 }, { 4, -1 }, { 4, 1 }, { 3, 3 },
+        { 1, 4 }, { -1, 4 }, { -3, 3 }, { -4, 1 },
+    };
+    for (unsigned int index = 0; index < sizeof(ring_points) / sizeof(ring_points[0]); index++) {
+        draw_pixel(fb, 151 + ring_points[index][0], 6 + ring_points[index][1], WHITE);
     }
     draw_rect(fb, 150, 5, 3, 3, WHITE);
 }
