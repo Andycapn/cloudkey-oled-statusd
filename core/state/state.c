@@ -107,6 +107,7 @@ static int exec_close(FILE *f, pid_t pid) {
 }
 
 static void poll_libre(void) {
+    g_libre.core_traffic_available = false;
     if (!libre_url()[0] || !libre_token()[0]) {
         g_libre.reachable = false;
         return;
@@ -152,6 +153,7 @@ static void poll_libre(void) {
     }
 
     g_libre.reachable = true;
+    g_libre.devices_up = ok;
     g_libre.devices_down = down;
     g_libre.devices_warning = warn;
 
@@ -186,19 +188,18 @@ static void poll_libre(void) {
                     total_out += strtoull(val_start, NULL, 10);
                 }
             }
-            exec_close(p, pid2);
+            if (exec_close(p, pid2) == 0) {
+                g_libre.traffic_in = total_in * 8;
+                g_libre.traffic_out = total_out * 8;
+                g_libre.core_traffic_available = true;
 
-            // Convert Octets rate to bits
-            g_libre.traffic_in = total_in * 8;
-            g_libre.traffic_out = total_out * 8;
-
-            // Shift history
-            for (int i = 0; i < 59; i++) {
-                g_libre.traffic_history_in[i] = g_libre.traffic_history_in[i+1];
-                g_libre.traffic_history_out[i] = g_libre.traffic_history_out[i+1];
+                for (int i = 0; i < 59; i++) {
+                    g_libre.traffic_history_in[i] = g_libre.traffic_history_in[i + 1];
+                    g_libre.traffic_history_out[i] = g_libre.traffic_history_out[i + 1];
+                }
+                g_libre.traffic_history_in[59] = g_libre.traffic_in;
+                g_libre.traffic_history_out[59] = g_libre.traffic_out;
             }
-            g_libre.traffic_history_in[59] = g_libre.traffic_in;
-            g_libre.traffic_history_out[59] = g_libre.traffic_out;
         }
     }
 }

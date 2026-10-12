@@ -1,4 +1,5 @@
 #include "../ui_manager.h"
+#include "../screen_chrome.h"
 #include "../../fb/text.h"
 #include "../../fb/bitmap.h"
 #include "../../fb/bitmap_loader.h"
@@ -20,22 +21,29 @@ struct libre_priv {
 static void libre_screen_render(struct screen *s, struct fb *fb) {
     struct libre_priv *priv = s->priv;
     const struct libre_stats *l = state_libre();
-    char buf[32];
+    char nodes[12], down[12], warning[12];
 
-    draw_text(fb, 10, 5, "LibreNMS Summary", WHITE);
-
+    screen_chrome_begin(fb, "LIBRENMS");
     struct bitmap *icon = l->reachable ? &priv->net_up : &priv->net_down;
-    draw_bitmap(fb, 10, 20, icon, WHITE);
-
-    if (!l->reachable) {
-        draw_text(fb, 32, 24, "unavailable", WHITE);
+    draw_bitmap(fb, 8, 14, icon, WHITE);
+    if (l->reachable) {
+        snprintf(nodes, sizeof(nodes), "%d", l->devices_up);
+        snprintf(down, sizeof(down), "%d", l->devices_down);
+        snprintf(warning, sizeof(warning), "%d", l->devices_warning);
+        draw_text_large(fb, 31, 14, nodes, WHITE);
+        draw_text(fb, 58, 19, "NODES UP", 0x7BEF);
     } else {
-        snprintf(buf, sizeof(buf), "down: %d", l->devices_down);
-        draw_text(fb, 32, 20, buf, WHITE);
-
-        snprintf(buf, sizeof(buf), "warn: %d", l->devices_warning);
-        draw_text(fb, 32, 32, buf, WHITE);
+        snprintf(nodes, sizeof(nodes), "--");
+        snprintf(down, sizeof(down), "--");
+        snprintf(warning, sizeof(warning), "--");
+        draw_text_large(fb, 31, 14, "OFFLINE", WHITE);
     }
+    const struct screen_metric metrics[3] = {
+        { SCREEN_ICON_CLOUD, "API", l->reachable ? "UP" : "DOWN" },
+        { SCREEN_ICON_ALERT, "DOWN", down },
+        { SCREEN_ICON_ALERT, "WARN", warning },
+    };
+    screen_chrome_footer(fb, metrics);
 }
 
 static void libre_screen_update(struct screen *s, uint32_t dt_ms) {

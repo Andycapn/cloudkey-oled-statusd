@@ -1,6 +1,7 @@
 #pragma once
 #include "ui_manager.h"
 
+struct screen *dashboard_screen_create(void);
 struct screen *system_health_screen_create(void);
 struct screen *identity_screen_create(void);
 struct screen *uptime_screen_create(void);

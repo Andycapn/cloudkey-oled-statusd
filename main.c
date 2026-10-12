@@ -48,16 +48,18 @@ static void apply_led_state_for_runtime(const struct system_health *health, cons
 
 static void switch_screen_for_index(struct ui_manager *ui, int screen_index) {
     if (screen_index == 0) {
-        ui_manager_switch_to(ui, system_health_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
+        ui_manager_switch_to(ui, dashboard_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
     } else if (screen_index == 1) {
-        ui_manager_switch_to(ui, identity_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
+        ui_manager_switch_to(ui, system_health_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
     } else if (screen_index == 2) {
-        ui_manager_switch_to(ui, uptime_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
+        ui_manager_switch_to(ui, identity_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
     } else if (screen_index == 3) {
-        ui_manager_switch_to(ui, libre_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
+        ui_manager_switch_to(ui, uptime_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
     } else if (screen_index == 4) {
-        ui_manager_switch_to(ui, internet_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
+        ui_manager_switch_to(ui, libre_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
     } else if (screen_index == 5) {
+        ui_manager_switch_to(ui, internet_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
+    } else if (screen_index == 6) {
         ui_manager_switch_to(ui, traffic_screen_create(), TRANSITION_SLIDE_LEFT, SCREEN_TRANSITION_MS);
     }
 }
@@ -67,7 +69,7 @@ static void update_screen_rotation(struct app_runtime *app) {
         if (app->screen_timer_ms >= SPLASH_DURATION_MS) {
             app->screen_timer_ms = 0;
             app->current_screen_idx = 0;
-            ui_manager_switch_to(&app->ui, system_health_screen_create(), TRANSITION_FADE, SCREEN_TRANSITION_MS);
+            ui_manager_switch_to(&app->ui, dashboard_screen_create(), TRANSITION_FADE, SCREEN_TRANSITION_MS);
         }
         return;
     }
@@ -77,7 +79,7 @@ static void update_screen_rotation(struct app_runtime *app) {
     }
 
     app->screen_timer_ms = 0;
-    app->current_screen_idx = (app->current_screen_idx + 1) % 6;
+    app->current_screen_idx = (app->current_screen_idx + 1) % 7;
     switch_screen_for_index(&app->ui, app->current_screen_idx);
 }
 

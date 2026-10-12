@@ -25,10 +25,13 @@ add_library(ui
         ui/render_network.h
         ui/render_state.c
         ui/render_state.h
+        ui/screen_chrome.c
+        ui/screen_chrome.h
         ui/state_icons.c
         ui/state_icons.h
         ui/ui_manager.c
         ui/ui_manager.h
+        ui/screens/dashboard.c
         ui/screens/system_health.c
         ui/screens/identity.c
         ui/screens/uptime.c

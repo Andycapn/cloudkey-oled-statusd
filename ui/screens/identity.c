@@ -1,26 +1,25 @@
 #include "../ui_manager.h"
+#include "../screen_chrome.h"
 #include "../../fb/text.h"
-#include "../../fb/draw.h"
 #include "../../core/state/state.h"
 #include <stdlib.h>
 
 #define WHITE 0xFFFF
-#define BLACK 0x0000
 
 static void identity_screen_render(struct screen *s, struct fb *fb) {
     (void)s;
 
     const struct identity_info *id = state_identity();
+    const struct system_health *health = state_system();
 
-    draw_rect(fb, 0, 0, 160, 58, BLACK);
-    draw_rect(fb, 0, 0, 160, 10, WHITE);
-    draw_text(fb, 4, 2, "DEV", BLACK);
-
-    draw_text(fb, 6, 16, id->hostname, WHITE);
-    draw_text(fb, 6, 28, "IP", WHITE);
-    draw_text(fb, 28, 28, id->ip, WHITE);
-    draw_text(fb, 6, 40, "IF", WHITE);
-    draw_text(fb, 28, 40, id->iface, WHITE);
+    screen_chrome_begin(fb, "DEVICE");
+    draw_text_fit(fb, 8, 15, id->ip, 144, true, WHITE);
+    const struct screen_metric metrics[3] = {
+        { SCREEN_ICON_DEVICE, "HOST", id->hostname },
+        { SCREEN_ICON_NETWORK, "IFACE", id->iface },
+        { SCREEN_ICON_CLOUD, "LINK", health->internet_reachable ? "UP" : "DOWN" },
+    };
+    screen_chrome_footer(fb, metrics);
 }
 
 static void identity_screen_update(struct screen *s, uint32_t dt_ms) {

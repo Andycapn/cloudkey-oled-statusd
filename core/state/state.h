@@ -32,6 +32,8 @@ struct uptime_stats {
  * --------------------------- */
 struct libre_stats {
     bool reachable;
+    bool core_traffic_available;
+    int devices_up;
     int devices_down;
     int devices_warning;
     

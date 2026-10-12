@@ -12,6 +12,7 @@ A lightweight daemon to manage the OLED display on UniFi CloudKey hardware (Gen2
   - [Transitions](#transitions)
 - [Production Build & Installation](#production-build--installation)
   - [Building for Hardware](#building-for-hardware)
+    - [Quick Deploy on Device](#quick-deploy-on-device)
   - [Installation](#installation)
   - [Configuration (LibreNMS)](#configuration-librenms)
   - [Internet Quality Probing](#internet-quality-probing)
@@ -22,11 +23,12 @@ A lightweight daemon to manage the OLED display on UniFi CloudKey hardware (Gen2
 ---
 
 ## Features
-- **Monochrome 5x7 Pixel Font**: Compact bitmap font tuned for the 160x60 OLED panel.
+- **Open Sans Bitmap Fonts**: Proportional printable-ASCII glyphs in compact and large sizes, with grayscale antialiased edges for the RGB565 framebuffer.
+- **Unified OLED Screens**: Shared dark frame, pixel iconography, fitted telemetry labels, and modular footer metrics across the status carousel.
 - **Modular UI**: React-like screen components with lifecycle hooks.
 - **Smooth Animations**: Support for Slide and Fade transitions.
 - **Local Simulator**: Develop and test UI on your Linux desktop via X11.
-- **Hardware Optimized**: Targets `/dev/fb0` on the target device and favors black/white-only rendering.
+- **Hardware Optimized**: Targets `/dev/fb0` on the target device with monochrome fills and grayscale antialiased text edges.
 
 ---
 
@@ -37,6 +39,7 @@ To develop and run the simulator, you need a Linux environment with the followin
 - `cmake` (version 3.10 or higher)
 - `gcc` or `clang`
 - `libx11-dev` (for the simulator)
+- Python 3 and Pillow (only if regenerating the bitmap font)
 
 ### Using the Simulator
 The simulator allows you to run the application on your computer, opening a 2x scaled window representing the OLED display.
@@ -55,6 +58,14 @@ The simulator allows you to run the application on your computer, opening a 2x s
     ```
 
 In simulator mode, icons are automatically loaded from the `assets/icons/` directory relative to the project root.
+
+The Open Sans source font and its SIL Open Font License are included in `assets/fonts/`. To regenerate the checked-in bitmap tables after changing the source font, run:
+
+```bash
+python3 tools/generate_opensans_font.py
+```
+
+The generated font is compiled into the daemon; no font library is needed at runtime. `draw_text` uses the compact size, while `draw_text_large` uses the larger size.
 
 ---
 
@@ -126,6 +137,21 @@ To generate the binary for the actual CloudKey hardware, disable the simulator. 
     ```bash
     cmake --build cmake-build-production --target oled-statusd
     ```
+
+### Quick Deploy on Device
+After pushing changes and pulling them into the project checkout on the CloudKey, run:
+
+```bash
+sudo ./tools/deploy.sh
+```
+
+The script configures and builds a release hardware binary on the device, installs it and the icon assets, then restarts `oled-statusd.service`. It leaves `/etc/oled-statusd.conf` untouched. The target needs CMake, a C compiler, and the existing systemd service unit.
+
+To restart a unit with a different name, pass it as the first argument:
+
+```bash
+sudo ./tools/deploy.sh my-oled-service.service
+```
 
 ### Installation
 The installation process places the executable in `/usr/local/bin` and assets in `/usr/local/share/oled-status/icons/`.
@@ -212,6 +238,6 @@ The daemon tracks system reboots over a 24-hour window. This requires a persiste
 
 ## System Architecture
 - `fb/`: Framebuffer abstraction (Hardware vs Simulator).
-- `ui/`: UI Manager and Screen components.
+- `ui/`: UI Manager, shared OLED screen chrome, and screen components.
 - `stats/`: System data collection (IP, Hostname, Uptime).
 - `assets/`: Fonts and raw bitmap icons.
