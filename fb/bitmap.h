@@ -9,3 +9,4 @@ struct bitmap {
 };
 
 void draw_bitmap(struct fb *fb, int x, int y, const struct bitmap *bmp, uint16_t color);
+void draw_bitmap_coverage(struct fb *fb, int x, int y, const struct bitmap *bmp, uint16_t color);

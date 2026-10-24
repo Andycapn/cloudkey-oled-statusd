@@ -1,4 +1,5 @@
 #include "text.h"
+#include "draw.h"
 #include "../assets/font_opensans.h"
 #include <stddef.h>
 #include <string.h>
@@ -8,18 +9,6 @@ static const struct bitmap_glyph *glyph_for_char(char c) {
         c = '?';
     }
     return &opensans_small[(unsigned char)c - ' '];
-}
-
-static uint16_t blend_coverage(uint16_t background, uint16_t foreground,
-                               unsigned int coverage) {
-    unsigned int inverse = 15 - coverage;
-    unsigned int red = ((((foreground >> 11) & 0x1F) * coverage) +
-                        (((background >> 11) & 0x1F) * inverse) + 7) / 15;
-    unsigned int green = ((((foreground >> 5) & 0x3F) * coverage) +
-                          (((background >> 5) & 0x3F) * inverse) + 7) / 15;
-    unsigned int blue = (((foreground & 0x1F) * coverage) +
-                         ((background & 0x1F) * inverse) + 7) / 15;
-    return (uint16_t)((red << 11) | (green << 5) | blue);
 }
 
 static void draw_glyph(struct fb *fb, int x, int y, const struct bitmap_glyph *glyph,
@@ -33,8 +22,7 @@ static void draw_glyph(struct fb *fb, int x, int y, const struct bitmap_glyph *g
                 pixel_y < 0 || pixel_y >= FB_VISIBLE_HEIGHT) {
                 continue;
             }
-            int index = pixel_y * FB_WIDTH + pixel_x;
-            fb->buf[index] = blend_coverage(fb->buf[index], color, coverage);
+            draw_pixel_coverage(fb, pixel_x, pixel_y, color, (uint8_t)coverage);
         }
     }
 }

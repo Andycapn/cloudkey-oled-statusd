@@ -106,9 +106,191 @@ static int exec_close(FILE *f, pid_t pid) {
     return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 
+static const char *skip_json_space(const char *value) {
+    while (*value == ' ' || *value == '\t' || *value == '\r' || *value == '\n') {
+        value++;
+    }
+    return value;
+}
+
+static bool is_json_value_end(char value) {
+    return value == '\0' || value == ',' || value == '}' ||
+           value == ' ' || value == '\t' || value == '\r' || value == '\n';
+}
+
+static bool json_string_field(const char *json, const char *field,
+                              char *output, size_t capacity) {
+    char key[64];
+    snprintf(key, sizeof(key), "\"%s\"", field);
+    const char *cursor = strstr(json, key);
+    if (!cursor) {
+        return false;
+    }
+
+    cursor = skip_json_space(cursor + strlen(key));
+    if (*cursor++ != ':') {
+        return false;
+    }
+    cursor = skip_json_space(cursor);
+    if (*cursor++ != '"') {
+        return false;
+    }
+
+    size_t length = 0;
+    while (*cursor && *cursor != '"') {
+        char value = *cursor++;
+        if (value == '\\' && *cursor) {
+            value = *cursor++;
+            if (value == 'n') value = '\n';
+            else if (value == 'r') value = '\r';
+            else if (value == 't') value = '\t';
+        }
+        if (length + 1 >= capacity) {
+            return false;
+        }
+        output[length++] = value;
+    }
+    if (*cursor != '"') {
+        return false;
+    }
+    output[length] = '\0';
+    return true;
+}
+
+static bool json_number_field(const char *json, const char *field, double *output) {
+    char key[64];
+    snprintf(key, sizeof(key), "\"%s\"", field);
+    const char *cursor = strstr(json, key);
+    if (!cursor) {
+        return false;
+    }
+
+    cursor = skip_json_space(cursor + strlen(key));
+    if (*cursor++ != ':') {
+        return false;
+    }
+    cursor = skip_json_space(cursor);
+    bool quoted = *cursor == '"';
+    if (quoted) {
+        cursor++;
+    }
+
+    char *end;
+    double value = strtod(cursor, &end);
+    if (end == cursor || value < 0 || (quoted && *end != '"') ||
+        (!quoted && !is_json_value_end(*end))) {
+        return false;
+    }
+    *output = value;
+    return true;
+}
+
+static bool encode_path_segment(const char *value, char *output, size_t capacity) {
+    static const char hex[] = "0123456789ABCDEF";
+    size_t length = 0;
+    for (const unsigned char *cursor = (const unsigned char *)value; *cursor; cursor++) {
+        bool safe = (*cursor >= 'a' && *cursor <= 'z') ||
+                    (*cursor >= 'A' && *cursor <= 'Z') ||
+                    (*cursor >= '0' && *cursor <= '9') ||
+                    *cursor == '-' || *cursor == '.' || *cursor == '_' || *cursor == '~';
+        size_t needed = safe ? 1 : 3;
+        if (length + needed >= capacity) {
+            return false;
+        }
+        if (safe) {
+            output[length++] = (char)*cursor;
+        } else {
+            output[length++] = '%';
+            output[length++] = hex[*cursor >> 4];
+            output[length++] = hex[*cursor & 0x0F];
+        }
+    }
+    output[length] = '\0';
+    return true;
+}
+
+static bool core_port_selected(const char *interface) {
+    const char *ports = libre_core_ports();
+    if (!ports[0]) {
+        return true;
+    }
+
+    size_t interface_length = strlen(interface);
+    while (*ports) {
+        while (*ports == ',' || *ports == ' ' || *ports == '\t') {
+            ports++;
+        }
+        const char *start = ports;
+        while (*ports && *ports != ',') {
+            ports++;
+        }
+        const char *end = ports;
+        while (end > start && (end[-1] == ' ' || end[-1] == '\t')) {
+            end--;
+        }
+        if ((size_t)(end - start) == interface_length &&
+            strncmp(start, interface, interface_length) == 0) {
+            return true;
+        }
+        if (*ports == ',') {
+            ports++;
+        }
+    }
+    return false;
+}
+
+static void count_device_statuses(const char *json, int *up, int *down, int *warning) {
+    const char *cursor = json;
+    while ((cursor = strstr(cursor, "\"status\"")) != NULL) {
+        const char *value = skip_json_space(cursor + sizeof("\"status\"") - 1);
+        if (*value != ':') {
+            cursor += sizeof("\"status\"") - 1;
+            continue;
+        }
+        value = skip_json_space(value + 1);
+
+        if (*value == '"') {
+            const char *text = ++value;
+            while (*value && *value != '"') {
+                value++;
+            }
+            size_t length = (size_t)(value - text);
+            if (length == 2 && strncmp(text, "up", length) == 0) {
+                (*up)++;
+            } else if (length == 4 && strncmp(text, "down", length) == 0) {
+                (*down)++;
+            } else if (length == 7 && strncmp(text, "warning", length) == 0) {
+                (*warning)++;
+            } else if (length == 1 && *text == '1') {
+                (*up)++;
+            } else if (length == 1 && *text == '0') {
+                (*down)++;
+            }
+            cursor = value;
+        } else if (strncmp(value, "true", 4) == 0 && is_json_value_end(value[4])) {
+            (*up)++;
+            cursor = value + 4;
+        } else if (strncmp(value, "false", 5) == 0 && is_json_value_end(value[5])) {
+            (*down)++;
+            cursor = value + 5;
+        } else if ((*value == '0' || *value == '1') && is_json_value_end(value[1])) {
+            if (*value == '1') {
+                (*up)++;
+            } else {
+                (*down)++;
+            }
+            cursor = value + 1;
+        } else {
+            cursor = value;
+        }
+    }
+}
+
 static void poll_libre(void) {
     g_libre.core_traffic_available = false;
-    if (!libre_url()[0] || !libre_token()[0]) {
+    g_libre.configured = libre_url()[0] && libre_token()[0];
+    g_libre.checked = true;
+    if (!g_libre.configured) {
         g_libre.reachable = false;
         return;
     }
@@ -133,17 +315,12 @@ static void poll_libre(void) {
         return;
     }
 
-    char buf[1024];
+    char buf[8192];
     int down = 0, warn = 0;
     int ok = 0;
 
     while (fgets(buf, sizeof(buf), p)) {
-        if (strstr(buf, "\"status\":\"down\"") || strstr(buf, "\"status\":false"))
-            down++;
-        else if (strstr(buf, "\"status\":\"warning\""))
-            warn++;
-        else if (strstr(buf, "\"status\":\"up\"") || strstr(buf, "\"status\":true"))
-            ok++;
+        count_device_statuses(buf, &ok, &down, &warn);
     }
 
     int rc = exec_close(p, pid);
@@ -157,50 +334,82 @@ static void poll_libre(void) {
     g_libre.devices_down = down;
     g_libre.devices_warning = warn;
 
-    /* Poll traffic for core device if configured */
     const char *core = libre_core_device();
-    if (core && core[0]) {
-        char ports_url[350];
-        snprintf(ports_url, sizeof(ports_url), "%s/devices/%s/ports", libre_url(), core);
+    if (!core || !core[0]) {
+        return;
+    }
 
-        char *argv2[] = {
-            "curl", "-sf", "--max-time", "5",
-            "-H", auth_header,
-            ports_url,
-            NULL
-        };
+    char encoded_core[192];
+    if (!encode_path_segment(core, encoded_core, sizeof(encoded_core))) {
+        return;
+    }
 
-        pid_t pid2;
-        p = exec_argv(argv2, &pid2);
-        if (p) {
-            uint64_t total_in = 0, total_out = 0;
-            while (fgets(buf, sizeof(buf), p)) {
-                char *in_ptr = strstr(buf, "\"ifInOctets_rate\":");
-                if (in_ptr) {
-                    char *val_start = in_ptr + 18;
-                    while (*val_start == ' ' || *val_start == ':') val_start++;
-                    total_in += strtoull(val_start, NULL, 10);
-                }
-                char *out_ptr = strstr(buf, "\"ifOutOctets_rate\":");
-                if (out_ptr) {
-                    char *val_start = out_ptr + 19;
-                    while (*val_start == ' ' || *val_start == ':') val_start++;
-                    total_out += strtoull(val_start, NULL, 10);
-                }
-            }
-            if (exec_close(p, pid2) == 0) {
-                g_libre.traffic_in = total_in * 8;
-                g_libre.traffic_out = total_out * 8;
-                g_libre.core_traffic_available = true;
+    char ports_url[512];
+    snprintf(ports_url, sizeof(ports_url), "%s/devices/%s/ports", libre_url(), encoded_core);
+    char *ports_argv[] = { "curl", "-sf", "--max-time", "5", "-H", auth_header, ports_url, NULL };
+    pid_t ports_pid;
+    FILE *ports_response = exec_argv(ports_argv, &ports_pid);
+    if (!ports_response) {
+        return;
+    }
 
-                for (int i = 0; i < 59; i++) {
-                    g_libre.traffic_history_in[i] = g_libre.traffic_history_in[i + 1];
-                    g_libre.traffic_history_out[i] = g_libre.traffic_history_out[i + 1];
-                }
-                g_libre.traffic_history_in[59] = g_libre.traffic_in;
-                g_libre.traffic_history_out[59] = g_libre.traffic_out;
-            }
+    char interfaces[128][64];
+    int interface_count = 0;
+    while (fgets(buf, sizeof(buf), ports_response)) {
+        char interface[64];
+        if (json_string_field(buf, "ifName", interface, sizeof(interface)) &&
+            interface[0] && core_port_selected(interface) &&
+            interface_count < (int)(sizeof(interfaces) / sizeof(interfaces[0]))) {
+            snprintf(interfaces[interface_count++], sizeof(interfaces[0]), "%s", interface);
         }
+    }
+    if (exec_close(ports_response, ports_pid) != 0) {
+        return;
+    }
+
+    double total_in = 0.0, total_out = 0.0;
+    int ports_with_rates = 0;
+    for (int index = 0; index < interface_count; index++) {
+        char encoded_interface[192];
+        if (!encode_path_segment(interfaces[index], encoded_interface, sizeof(encoded_interface))) {
+            continue;
+        }
+
+        char port_url[768];
+        snprintf(port_url, sizeof(port_url), "%s/devices/%s/ports/%s",
+                 libre_url(), encoded_core, encoded_interface);
+        char *port_argv[] = { "curl", "-sf", "--max-time", "5", "-H", auth_header, port_url, NULL };
+        pid_t port_pid;
+        FILE *port_response = exec_argv(port_argv, &port_pid);
+        if (!port_response) {
+            continue;
+        }
+
+        double in_rate = 0.0, out_rate = 0.0;
+        bool has_in = false, has_out = false;
+        while (fgets(buf, sizeof(buf), port_response)) {
+            if (!has_in) has_in = json_number_field(buf, "ifInOctets_rate", &in_rate);
+            if (!has_out) has_out = json_number_field(buf, "ifOutOctets_rate", &out_rate);
+        }
+        int port_status = exec_close(port_response, port_pid);
+        if (port_status == 0 && has_in && has_out) {
+            total_in += in_rate;
+            total_out += out_rate;
+            ports_with_rates++;
+        }
+    }
+
+    if (ports_with_rates > 0) {
+        g_libre.traffic_in = (uint64_t)(total_in * 8.0);
+        g_libre.traffic_out = (uint64_t)(total_out * 8.0);
+        g_libre.core_traffic_available = true;
+
+        for (int i = 0; i < 59; i++) {
+            g_libre.traffic_history_in[i] = g_libre.traffic_history_in[i + 1];
+            g_libre.traffic_history_out[i] = g_libre.traffic_history_out[i + 1];
+        }
+        g_libre.traffic_history_in[59] = g_libre.traffic_in;
+        g_libre.traffic_history_out[59] = g_libre.traffic_out;
     }
 }
 
@@ -311,6 +520,7 @@ void state_init(void) {
     g_uptime.reboot_count_24h = count_recent_reboots(now);
 
     libre_config_load();
+    g_libre.configured = libre_url()[0] && libre_token()[0];
 }
 
 static void poll_internet_quality(void) {

@@ -52,18 +52,18 @@ void screen_chrome_begin(struct fb *fb, const char *title) {
 }
 
 void screen_chrome_divider(struct fb *fb) {
-    draw_hline(fb, 0, 33, FB_WIDTH, DIVIDER);
+    draw_hline(fb, 0, 30, FB_WIDTH, DIVIDER);
 }
 
 void screen_chrome_footer(struct fb *fb, const struct screen_metric metrics[3]) {
     screen_chrome_divider(fb);
-    draw_vline(fb, 53, 36, 22, DIVIDER);
-    draw_vline(fb, 106, 36, 22, DIVIDER);
+    draw_vline(fb, 53, 33, 25, DIVIDER);
+    draw_vline(fb, 106, 33, 25, DIVIDER);
 
     for (int index = 0; index < 3; index++) {
         int x = index * 53;
-        draw_icon(fb, x + 4, 38, metrics[index].icon, MUTED);
-        draw_text_fit(fb, x + 15, 36, metrics[index].label, 36, false, MUTED);
-        draw_text_fit(fb, x + 15, 47, metrics[index].value, 36, false, WHITE);
+        draw_icon(fb, x + 4, 39, metrics[index].icon, MUTED);
+        draw_text_fit(fb, x + 15, 34, metrics[index].label, 36, false, MUTED);
+        draw_text_fit(fb, x + 15, 46, metrics[index].value, 36, false, WHITE);
     }
 }

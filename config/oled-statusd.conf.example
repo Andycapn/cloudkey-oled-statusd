@@ -2,3 +2,5 @@
 LIBRE_URL=
 LIBRE_TOKEN=
 LIBRE_CORE_DEVICE=
+# Optional comma-separated interface names; omit to aggregate all interfaces.
+LIBRE_CORE_PORTS=

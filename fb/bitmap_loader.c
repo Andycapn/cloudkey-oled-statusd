@@ -49,6 +49,38 @@ int load_bitmap(const char *path, int w, int h, struct bitmap *out) {
     return 0;
 }
 
+int load_coverage_bitmap(const char *path, int w, int h, struct bitmap *out) {
+    size_t expected_size = ((size_t)w * h + 1) / 2;
+    struct stat st;
+    if (w <= 0 || h <= 0 || stat(path, &st) != 0 || (size_t)st.st_size != expected_size) {
+        fprintf(stderr, "invalid coverage bitmap: %s\n", path);
+        return -1;
+    }
+
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        perror("fopen coverage bitmap");
+        return -1;
+    }
+
+    uint8_t *data = malloc(expected_size);
+    if (!data) {
+        fclose(f);
+        return -1;
+    }
+    if (fread(data, 1, expected_size, f) != expected_size) {
+        fclose(f);
+        free(data);
+        return -1;
+    }
+    fclose(f);
+
+    out->w = w;
+    out->h = h;
+    out->data = data;
+    return 0;
+}
+
 void free_bitmap(struct bitmap *bmp) {
     if (bmp->data) {
         free((void *)bmp->data);

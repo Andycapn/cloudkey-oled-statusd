@@ -23,11 +23,11 @@ static void draw_traffic_sparkline(struct fb *fb, const struct libre_stats *stat
         }
     }
 
-    int previous_y = 29;
+    int previous_y = 28;
     for (int index = 0; index < 60; index++) {
         uint64_t total = stats->traffic_history_in[index] + stats->traffic_history_out[index];
-        int x = 100 + index * 53 / 59;
-        int y = 30 - (int)(total * 15 / maximum);
+        int x = 104 + index * 49 / 59;
+        int y = 28 - (int)(total * 13 / maximum);
         int top = y < previous_y ? y : previous_y;
         int height = abs(previous_y - y) + 1;
         draw_vline(fb, x, top, height, MUTED);
@@ -43,17 +43,19 @@ static void traffic_screen_render(struct screen *s, struct fb *fb) {
     screen_chrome_begin(fb, "CORE TRAFFIC");
     if (l->core_traffic_available) {
         double total_mbps = (l->traffic_in + l->traffic_out) / 1000000.0;
-        snprintf(total, sizeof(total), "%.1fM", total_mbps);
+        if (total_mbps >= 1000.0) {
+            snprintf(total, sizeof(total), "%.1f Gbps", total_mbps / 1000.0);
+        } else {
+            snprintf(total, sizeof(total), "%.1f Mbps", total_mbps);
+        }
         snprintf(in, sizeof(in), "%.1fM", l->traffic_in / 1000000.0);
         snprintf(out, sizeof(out), "%.1fM", l->traffic_out / 1000000.0);
-        draw_text_large(fb, 8, 14, total, WHITE);
     } else {
         snprintf(total, sizeof(total), "--");
         snprintf(in, sizeof(in), "--");
         snprintf(out, sizeof(out), "--");
-        draw_text_large(fb, 8, 14, total, WHITE);
     }
-    draw_text(fb, 9, 27, "TOTAL MBPS", MUTED);
+    draw_text_fit(fb, 8, 14, total, 92, true, WHITE);
     draw_traffic_sparkline(fb, l);
 
     const struct screen_metric metrics[3] = {

@@ -3,11 +3,11 @@
 
 enum led_state {
     LED_OFF,
-    LED_BOOT,      // Slow blue blink
+    LED_BOOT,      // Slow blue pulse
     LED_OK,        // Solid blue
-    LED_WARN,      // Solid white
-    LED_CRITICAL,  // Fast white blink
-    LED_DEGRADED   // Alternating blue/white
+    LED_WARN,      // Brief white pulse every five seconds
+    LED_CRITICAL,  // Triple white pulse
+    LED_DEGRADED   // Blue/white double pulse
 };
 
 #include "../../fb/fb.h"

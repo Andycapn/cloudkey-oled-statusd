@@ -31,6 +31,8 @@ struct uptime_stats {
  * LibreNMS Summary
  * --------------------------- */
 struct libre_stats {
+    bool configured;
+    bool checked;
     bool reachable;
     bool core_traffic_available;
     int devices_up;

@@ -1,6 +1,8 @@
-# CloudKey OLED Status Daemon (`oled-statusd`)
+# CloudKey Open Status (`oled-statusd`)
 
-A lightweight daemon to manage the OLED display on UniFi CloudKey hardware (Gen2/Gen2 Plus). It features a modular, declarative UI framework and a local simulator for rapid development.
+A small Linux status display for repurposed CloudKey Gen2/Gen2 Plus hardware. It turns the built-in OLED into a glanceable view of the host, network, and self-hosted services, with a local simulator for development.
+
+This project is about the useful Linux appliance behind the screen, not the vendor's management UI. The current integrations cover host health, LibreNMS, internet quality, and core-device traffic. The display is designed to grow alongside a home-lab setup that might also include CUPS, SmokePing, and other services; those are ideas for future integrations, not built-in monitors yet.
 
 ## Table of Contents
 - [Features](#features)
@@ -63,6 +65,12 @@ The Open Sans source font and its SIL Open Font License are included in `assets/
 
 ```bash
 python3 tools/generate_opensans_font.py
+```
+
+The splash logo is generated from the included high-resolution source with 4-bit antialiased coverage:
+
+```bash
+python3 tools/generate_splash_logo.py
 ```
 
 The generated font is compiled into the daemon; no font library is needed at runtime. `draw_text` uses the compact size, while `draw_text_large` uses the larger size.
@@ -175,6 +183,8 @@ LibreNMS integration is optional. To enable it, create or edit the configuration
     LIBRE_TOKEN=your_api_token_here
     # ID or hostname of the network core device to monitor
     LIBRE_CORE_DEVICE=1
+    # Optional comma-separated interface names; omit to aggregate all interfaces
+    LIBRE_CORE_PORTS=eth0,eth1
     ```
 
 2.  **For Development (Simulator)**:
@@ -184,14 +194,16 @@ LibreNMS integration is optional. To enable it, create or edit the configuration
     LIBRE_URL=http://your-librenms-ip/api/v0
     LIBRE_TOKEN=your_api_token_here
     LIBRE_CORE_DEVICE=1
+    # Optional comma-separated interface names; omit to aggregate all interfaces
+    LIBRE_CORE_PORTS=eth0,eth1
     ```
     *If the token is empty or the file is missing, the LibreNMS screens will show "UNAVAILABLE".*
 
 ### Core Traffic Monitoring
-When `LIBRE_CORE_DEVICE` is configured, the daemon fetches aggregate port statistics for that device.
+When `LIBRE_CORE_DEVICE` is configured, the daemon fetches each interface's detail record and aggregates available port statistics. LibreNMS's device port-list endpoint returns interface names only, so traffic counters are read from the per-interface endpoint.
 
 - **Screen**: "Core Traffic" displays a 60-point history graph.
-- **Metrics**: Aggregates `ifInOctets_rate` and `ifOutOctets_rate` across all ports.
+- **Metrics**: Aggregates available `ifInOctets_rate` and `ifOutOctets_rate` values across the core device's interfaces, converting octets/sec to bits/sec.
 - **Visualization**: Solid vertical bars represent Incoming traffic; Dots at the peak represent Outgoing traffic.
 - **Unit**: Throughput is displayed in Mbps.
 
@@ -209,11 +221,13 @@ The daemon controls the CloudKey's RGB LED ring to provide at-a-glance system st
 
 | LED State | Meaning | Condition |
 | :--- | :--- | :--- |
-| **Blue (Slow Blink)** | Booting | Initial splash screen phase |
+| **Blue (Slow Pulse)** | Booting | Initial splash screen phase |
 | **Blue (Solid)** | Healthy | System OK, Internet OK, LibreNMS clean |
-| **White (Solid)** | Warning | LibreNMS has active device alerts |
-| **Blue/White (Alt)** | Degraded | Internet down or high resource usage |
-| **White (Fast Blink)** | Critical | Hardware/Service failure (e.g., Disk Full) |
+| **Brief White Pulse** | Warning | LibreNMS reports warning devices |
+| **Blue/White Double Pulse** | Degraded | Internet down, high resource use, or configured LibreNMS API unavailable |
+| **Triple White Pulse** | Critical | Host health check fails or LibreNMS reports a device down |
+
+Escalations apply immediately; the LED waits three stable seconds before clearing or lowering an alert state. An unconfigured LibreNMS integration does not count as an outage.
 
 ### Systemd Integration
 The binary name `oled-statusd` is chosen for compatibility with standard systemd service unit naming. A separate document will cover the full systemd configuration and hardware setup.

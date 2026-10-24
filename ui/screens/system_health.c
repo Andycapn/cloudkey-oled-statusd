@@ -15,7 +15,6 @@ static void system_health_render(struct screen *s, struct fb *fb) {
 
     screen_chrome_begin(fb, "SYSTEM");
     draw_text_large(fb, 8, 14, state, WHITE);
-    draw_text(fb, 9, 25, h->internet_reachable ? "INTERNET ONLINE" : "INTERNET OFFLINE", 0x7BEF);
 
     snprintf(cpu, sizeof(cpu), h->cpu_percent < 0 ? "--" : "%d%%", h->cpu_percent);
     snprintf(memory, sizeof(memory), h->mem_percent < 0 ? "--" : "%d%%", h->mem_percent);

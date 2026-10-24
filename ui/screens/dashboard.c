@@ -28,7 +28,7 @@ static void dashboard_render(struct screen *s, struct fb *fb) {
     char device_count[12];
     char alert_count[12];
 
-    screen_chrome_begin(fb, "UNIFI SDN");
+    screen_chrome_begin(fb, "OPEN CLOUDKEY");
 
     struct bitmap *network_icon = health->internet_reachable ? &priv->net_up : &priv->net_down;
     draw_bitmap(fb, 6, 15, network_icon, WHITE);

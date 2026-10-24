@@ -15,8 +15,12 @@
 #define SPLASH_DURATION_MS 3000u
 #define SCREEN_ROTATION_MS 5000u
 #define SCREEN_TRANSITION_MS 500u
+#define LED_RECOVERY_MS 3000u
 
 static volatile int running = 1;
+static enum led_state applied_led_state = LED_OFF;
+static enum led_state pending_led_state = LED_OFF;
+static uint32_t pending_led_ms = 0;
 
 struct app_runtime {
     struct fb fb;
@@ -30,19 +34,69 @@ static void handle_signal(int sig) {
     running = 0;
 }
 
-static void apply_led_state_for_runtime(const struct system_health *health, const struct libre_stats *libre, int current_screen_idx) {
+static int led_state_severity(enum led_state state) {
+    switch (state) {
+        case LED_CRITICAL: return 4;
+        case LED_DEGRADED: return 3;
+        case LED_WARN: return 2;
+        case LED_OK: return 1;
+        case LED_BOOT:
+        case LED_OFF:
+        default: return 0;
+    }
+}
+
+static enum led_state requested_led_state(const struct system_health *health,
+                                          const struct libre_stats *libre,
+                                          int current_screen_idx) {
     if (current_screen_idx == -1) {
-        led_set_state(LED_BOOT);
-    } else if (health->state == HEALTH_FAILED) {
-        led_set_state(LED_CRITICAL);
-    } else if (health->state == HEALTH_DEGRADED) {
-        led_set_state(LED_DEGRADED);
-    } else if (libre->reachable && (libre->devices_down > 0)) {
-        led_set_state(LED_CRITICAL);
-    } else if (libre->reachable && (libre->devices_warning > 0)) {
-        led_set_state(LED_WARN);
-    } else {
-        led_set_state(LED_OK);
+        return LED_BOOT;
+    }
+
+    if (health->state == HEALTH_FAILED || (libre->reachable && libre->devices_down > 0)) {
+        return LED_CRITICAL;
+    }
+    if (health->state == HEALTH_DEGRADED ||
+        (libre->configured && libre->checked && !libre->reachable)) {
+        return LED_DEGRADED;
+    }
+    if (libre->reachable && libre->devices_warning > 0) {
+        return LED_WARN;
+    }
+    return LED_OK;
+}
+
+static void apply_led_state_for_runtime(const struct system_health *health,
+                                        const struct libre_stats *libre,
+                                        int current_screen_idx, uint32_t dt_ms) {
+    enum led_state requested = requested_led_state(health, libre, current_screen_idx);
+    if (requested == applied_led_state) {
+        pending_led_state = applied_led_state;
+        pending_led_ms = 0;
+        return;
+    }
+
+    if (requested == LED_BOOT || applied_led_state == LED_BOOT ||
+        requested == LED_CRITICAL ||
+        led_state_severity(requested) > led_state_severity(applied_led_state)) {
+        applied_led_state = requested;
+        pending_led_state = requested;
+        pending_led_ms = 0;
+        led_set_state(requested);
+        return;
+    }
+
+    if (pending_led_state != requested) {
+        pending_led_state = requested;
+        pending_led_ms = 0;
+    }
+    if (pending_led_ms < LED_RECOVERY_MS) {
+        pending_led_ms += dt_ms;
+    }
+    if (pending_led_ms >= LED_RECOVERY_MS) {
+        applied_led_state = requested;
+        pending_led_ms = 0;
+        led_set_state(requested);
     }
 }
 
@@ -95,7 +149,7 @@ static void process_frame(struct app_runtime *app) {
 
     const struct system_health *health = state_system();
     const struct libre_stats *libre = state_libre();
-    apply_led_state_for_runtime(health, libre, app->current_screen_idx);
+    apply_led_state_for_runtime(health, libre, app->current_screen_idx, FRAME_TICK_MS);
 
     app->screen_timer_ms += FRAME_TICK_MS;
     update_screen_rotation(app);
